@@ -17,7 +17,7 @@ from storage import Storage
 from tariffs import Tariffs
 from timeutil import TZ, hhmm, parse_day
 
-VERSION = "0.2.0"
+VERSION = "0.2.1"
 DATA_DIR = os.environ.get("DATA_DIR", "/data")
 OPTIONS_PATH = os.environ.get("OPTIONS_PATH", os.path.join(DATA_DIR, "options.json"))
 STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
@@ -139,12 +139,8 @@ class App:
         hours = calc.price_day(self.store, self.tariffs, today)
         cur = calc.current_hour(now)
         price = next((h for h in hours if h["t"] == cur), None)
-        nxt = None
-        if price:
-            for h in hours:
-                if h["t"] > cur and h["level"] != price["level"]:
-                    nxt = {"uur": h["uur"], "level": h["level"], "allin": h["allin"]}
-                    break
+        tomorrow = calc.price_day(self.store, self.tariffs, today + dt.timedelta(days=1))
+        nxt = calc.next_moment(price, [h for h in hours if h["t"] > cur], tomorrow)
         latest = self.collector.latest if self.collector else None
         last_ok = self.collector.last_ok if self.collector else 0
         partial = self.collector.partial() if self.collector else []

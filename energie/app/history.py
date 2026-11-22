@@ -121,12 +121,12 @@ def battery_numbers(tot, cap, stored_delta=0.0):
     elif out <= 0.05:
         opbrengst = 0.0
     return {
-        "geladen_kwh": round(inn, 2),
-        "ontladen_kwh": round(out, 2),
-        "uit_net_kwh": round(tot["batt_in_grid"], 2),
-        "uit_zon_kwh": round(tot["batt_in_pv"], 2),
-        "cycli": round(out / cap, 2) if cap else None,
-        "opbrengst": round(opbrengst, 2) if opbrengst is not None else None,
+        "geladen_kwh": round(inn, 3),
+        "ontladen_kwh": round(out, 3),
+        "uit_net_kwh": round(tot["batt_in_grid"], 3),
+        "uit_zon_kwh": round(tot["batt_in_pv"], 3),
+        "cycli": round(out / cap, 3) if cap else None,
+        "opbrengst": round(opbrengst, 3) if opbrengst is not None else None,
         "laadprijs": round(laadprijs, 3) if laadprijs is not None else None,
         "gebruiksprijs": round(tot["batt_value_out"] / out, 3) if out > 0.05 else None,
     }
@@ -141,11 +141,11 @@ def stored_delta(store, start_day, end_day, cap):
 
 def totals_json(tot, cap, delta=0.0):
     return {
-        "verbruik_kwh": round(tot["load"], 2),
-        "opgewekt_kwh": round(tot["pv"], 2),
-        "afname_kwh": round(tot["import"], 2),
-        "terug_kwh": round(tot["export"], 2),
-        "kosten": round(tot["cost"], 2),
+        "verbruik_kwh": round(tot["load"], 3),
+        "opgewekt_kwh": round(tot["pv"], 3),
+        "afname_kwh": round(tot["import"], 3),
+        "terug_kwh": round(tot["export"], 3),
+        "kosten": round(tot["cost"], 3),
         "batterij": battery_numbers(tot, cap, delta),
         "uren_zonder_prijs": tot["missing_price"],
         "meetminuten": tot["minutes"],
@@ -202,7 +202,7 @@ def period(store, tariffs, periode, day, cap):
     vergelijk = None
     if prev["minutes"] > 0:
         naam = {"dag": "vorige " + DAGEN_LANG[prev_day.weekday()], "week": "vorige week", "maand": "vorige maand", "jaar": "vorig jaar"}[periode]
-        vergelijk = {"label": naam, "kosten": round(prev["cost"], 2)}
+        vergelijk = {"label": naam, "kosten": round(prev["cost"], 3)}
 
     today = dt.datetime.now(TZ).date()
     first = store.first_ts()
@@ -238,7 +238,7 @@ def battery(store, tariffs, day, cap):
             v = tot["batt_in"] - tot["batt_out"] - opgeslagen
             netto_in = tot["batt_in"] - opgeslagen
             verlies = {
-                "kwh": round(max(v, 0), 2),
+                "kwh": round(max(v, 0), 3),
                 "procent": round(max(v, 0) / netto_in * 100) if netto_in > 0.3 else None,
             }
         nums["verlies"] = verlies
@@ -266,6 +266,6 @@ def battery(store, tariffs, day, cap):
             "max_procent": round(max_soc) if max_soc is not None else None,
         },
         "dagen": lijst,
-        "dagen_samen": round(sum(x["opbrengst"] or 0 for x in lijst), 2),
+        "dagen_samen": round(sum(x["opbrengst"] or 0 for x in lijst), 3),
         "capaciteit_kwh": cap,
     }

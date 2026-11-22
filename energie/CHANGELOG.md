@@ -1,5 +1,10 @@
 # Wijzigingen
 
+## 0.2.1
+
+- Scherm Nu: de melding zegt nu vanaf wanneer stroom weer voordelig is (eventueel morgen), of tot wanneer het voordelig blijft. Komt er eerst een duur blok, dan waarschuwt hij daarvoor.
+- Historie en Batterij: kWh, bedragen en cycli met drie decimalen.
+
 ## 0.2.0
 
 - Nieuw scherm Historie: kosten, verbruik, opwek, afname en teruglevering per dag, week, maand en jaar, met vergelijking met de vorige periode en een grafiek van waar je stroom vandaan kwam (zon, batterij of net).

@@ -6,7 +6,8 @@ const $ = (id) => document.getElementById(id);
 const fmtGetal = (v, d) => v.toLocaleString("nl-NL", { minimumFractionDigits: d, maximumFractionDigits: d });
 const euro = (v, d = 2) => (v == null ? "–" : (v < 0 ? "−€" : "€") + fmtGetal(Math.abs(v), d));
 const watt = (w) => (w == null ? "–" : Math.round(Math.abs(w)).toLocaleString("nl-NL") + " W");
-const kwh = (v) => (v == null ? "–" : fmtGetal(v, 1) + " kWh");
+const kwh = (v, d = 1) => (v == null ? "–" : fmtGetal(v, d) + " kWh");
+const kwh3 = (v) => kwh(v, 3);
 
 let tab = "nu";
 let dag = "vandaag";
@@ -85,9 +86,14 @@ function tekenNu(d) {
   const nb = $("volgende");
   if (d.volgende) {
     nb.hidden = false;
-    nb.classList.toggle("goed", d.volgende.level === "goedkoop");
-    const woord = { duur: "duur", goedkoop: "goedkoop", normaal: "weer normaal" }[d.volgende.level];
-    $("volgende-tekst").innerHTML = `Om <strong>${d.volgende.uur}</strong> wordt het ${woord}: ${euro(d.volgende.allin)}`;
+    const v = d.volgende;
+    const wanneer = (v.morgen ? "morgen " : "") + `<strong>${v.uur}</strong>`;
+    nb.classList.toggle("goed", v.soort !== "duur_vanaf");
+    $("volgende-tekst").innerHTML = {
+      voordelig_tot: `Voordelig tot ${wanneer}, daarna ${euro(v.allin)}`,
+      voordelig_vanaf: `Voordelig vanaf ${wanneer}: ${euro(v.allin)}`,
+      duur_vanaf: `Om ${wanneer} wordt het duur: ${euro(v.allin)}`,
+    }[v.soort];
   } else {
     nb.hidden = true;
   }
@@ -218,7 +224,7 @@ let histData = null;
 
 function signedEuro(v) {
   if (v == null) return "–";
-  return (v > 0 ? "+" : "") + euro(v);
+  return (v > 0 ? "+" : "") + euro(v, 3);
 }
 
 function zetOpbrengst(el, v) {
@@ -234,13 +240,13 @@ function tekenHistorie(d) {
   $("h-vorige").disabled = !d.eerder_beschikbaar;
   const t = d.totaal;
   $("h-kosten-label").textContent = d.lopend ? "Stroomkosten tot nu" : "Stroomkosten";
-  $("h-kosten").textContent = t.meetminuten ? euro(t.kosten) : "–";
-  $("h-vergelijk").textContent = d.vergelijk ? `${d.vergelijk.label} ${euro(d.vergelijk.kosten)}` : "";
+  $("h-kosten").textContent = t.meetminuten ? euro(t.kosten, 3) : "–";
+  $("h-vergelijk").textContent = d.vergelijk ? `${d.vergelijk.label} ${euro(d.vergelijk.kosten, 3)}` : "";
   zetOpbrengst($("h-bat"), t.batterij.opbrengst);
-  $("h-verbruik").textContent = kwh(t.verbruik_kwh);
-  $("h-opgewekt").textContent = kwh(t.opgewekt_kwh);
-  $("h-afname").textContent = kwh(t.afname_kwh);
-  $("h-terug").textContent = kwh(t.terug_kwh);
+  $("h-verbruik").textContent = kwh3(t.verbruik_kwh);
+  $("h-opgewekt").textContent = kwh3(t.opgewekt_kwh);
+  $("h-afname").textContent = kwh3(t.afname_kwh);
+  $("h-terug").textContent = kwh3(t.terug_kwh);
 
   const reeks = d.reeks;
   const totalen = reeks.map((r) => r.zon + r.batterij + r.net);
@@ -253,12 +259,12 @@ function tekenHistorie(d) {
 
   const bars = $("h-bars");
   bars.textContent = "";
-  bars.setAttribute("aria-label", `Verbruik per ${d.periode === "dag" ? "uur" : d.periode === "jaar" ? "maand" : "dag"}, totaal ${kwh(t.verbruik_kwh)}, uit zon, batterij en net`);
+  bars.setAttribute("aria-label", `Verbruik per ${d.periode === "dag" ? "uur" : d.periode === "jaar" ? "maand" : "dag"}, totaal ${kwh3(t.verbruik_kwh)}, uit zon, batterij en net`);
   for (const r of reeks) {
     const kolom = document.createElement("i");
     const hoog = (v) => (v / top) * 140;
     kolom.style.height = hoog(r.zon + r.batterij + r.net) + "px";
-    kolom.title = `${r.label}: zon ${kwh(r.zon)}, batterij ${kwh(r.batterij)}, net ${kwh(r.net)}${r.heeft_data ? ", " + euro(r.kosten) : ""}`;
+    kolom.title = `${r.label}: zon ${kwh3(r.zon)}, batterij ${kwh3(r.batterij)}, net ${kwh3(r.net)}${r.heeft_data ? ", " + euro(r.kosten, 3) : ""}`;
     for (const [cls, v] of [["zon", r.zon], ["bat", r.batterij], ["net", r.net]]) {
       if (v <= 0) continue;
       const b = document.createElement("b");
@@ -282,7 +288,7 @@ function tekenHistorie(d) {
 
   const b = t.batterij;
   $("h-laadnoot").textContent = b.uit_net_kwh > 0.05
-    ? `Daarnaast ${kwh(b.uit_net_kwh)} van het net gehaald om de batterij te laden.`
+    ? `Daarnaast ${kwh3(b.uit_net_kwh)} van het net gehaald om de batterij te laden.`
     : "";
   let dekking = "";
   if (!t.meetminuten) dekking = "Voor deze periode zijn nog geen metingen.";
@@ -320,14 +326,14 @@ let batTimer = null;
 
 function verliesTekst(v) {
   if (!v) return "–";
-  return kwh(v.kwh) + (v.procent != null ? `<small>${v.procent}% van de lading</small>` : "");
+  return kwh3(v.kwh) + (v.procent != null ? `<small>${v.procent}% van de lading</small>` : "");
 }
 
 function tekenBatterij(d) {
   const v = d.vandaag;
-  $("b-in").textContent = kwh(v.geladen_kwh);
-  $("b-uit").textContent = kwh(v.ontladen_kwh);
-  $("b-cycli").textContent = v.cycli == null ? "–" : fmtGetal(v.cycli, 1);
+  $("b-in").textContent = kwh3(v.geladen_kwh);
+  $("b-uit").textContent = kwh3(v.ontladen_kwh);
+  $("b-cycli").textContent = v.cycli == null ? "–" : fmtGetal(v.cycli, 3);
   zetOpbrengst($("b-op-vandaag"), v.opbrengst);
 
   const pts = d.curve.map((p) => `${((p.uur / 24) * 316).toFixed(1)},${(88 - p.soc * 0.8).toFixed(1)}`);
@@ -345,10 +351,10 @@ function tekenBatterij(d) {
 
   const g = d.gisteren;
   zetOpbrengst($("g-op"), g.heeft_data ? g.opbrengst : null);
-  $("g-in").textContent = g.heeft_data ? kwh(g.geladen_kwh) : "–";
-  $("g-uit").textContent = g.heeft_data ? kwh(g.ontladen_kwh) : "–";
+  $("g-in").textContent = g.heeft_data ? kwh3(g.geladen_kwh) : "–";
+  $("g-uit").textContent = g.heeft_data ? kwh3(g.ontladen_kwh) : "–";
   $("g-verlies").innerHTML = g.heeft_data ? verliesTekst(g.verlies) : "–";
-  $("g-cycli").textContent = g.heeft_data && g.cycli != null ? fmtGetal(g.cycli, 1) : "–";
+  $("g-cycli").textContent = g.heeft_data && g.cycli != null ? fmtGetal(g.cycli, 3) : "–";
   $("g-uitleg").textContent = !g.heeft_data
     ? "Nog geen metingen van gisteren."
     : g.laadprijs != null && g.gebruiksprijs != null
@@ -361,7 +367,7 @@ function tekenBatterij(d) {
   for (const r of d.dagen) {
     const rij = document.createElement("div");
     rij.className = "blok";
-    rij.innerHTML = `<span class="tijd">${r.dag}</span><span class="lvl">${kwh(r.ontladen_kwh)} ontladen</span><span class="bedrag ${r.opbrengst != null && r.opbrengst < 0 ? "c-min" : "c-bat"}">${signedEuro(r.opbrengst)}</span>`;
+    rij.innerHTML = `<span class="tijd">${r.dag}</span><span class="lvl">${kwh3(r.ontladen_kwh)} ontladen</span><span class="bedrag ${r.opbrengst != null && r.opbrengst < 0 ? "c-min" : "c-bat"}">${signedEuro(r.opbrengst)}</span>`;
     lijst.appendChild(rij);
   }
   zetOpbrengst($("b-samen"), d.dagen_samen);

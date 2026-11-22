@@ -161,7 +161,7 @@ body.toetsenbord button:focus-visible { outline: 3px solid var(--inkt); outline-
 .curve circle { fill: var(--bat); stroke: var(--kaart); stroke-width: 2; }
 .status { font-size: 12px; font-weight: 500; color: var(--bat-tekst); }
 .status.mis { color: var(--duur-tekst); }
-.grid4.boven { padding-top: 10px; border-top: 1px solid var(--rand); margin-top: 4px; }
+.grid2.boven, .grid4.boven { padding-top: 10px; border-top: 1px solid var(--rand); margin-top: 4px; }
 .groot { font-family: var(--kop); font-size: 20px; font-weight: 600; }
 .blok.totaal { font-weight: 600; border-bottom: 0; }
 .soc { position: relative; height: 14px; border-radius: 999px; background: var(--oranje-zacht); overflow: hidden; }

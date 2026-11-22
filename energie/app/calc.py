@@ -122,6 +122,34 @@ def day_totals(store, tariffs, day, extra_rows=()):
     }
 
 
+def next_moment(price, rest_today, tomorrow):
+    """Wat de melding op het scherm Nu moet zeggen.
+
+    - Nu goedkoop: tot wanneer het voordelig blijft.
+    - Nu normaal en eerst komt een duur blok: wanneer het duur wordt.
+    - Anders: vanaf wanneer het weer voordelig (goedkoop) is, eventueel morgen.
+    """
+    if not price:
+        return None
+    upcoming = [dict(h, morgen=False) for h in rest_today] + [dict(h, morgen=True) for h in tomorrow]
+
+    def first(pred):
+        return next((h for h in upcoming if pred(h)), None)
+
+    def pack(soort, h):
+        return {"soort": soort, "uur": h["uur"], "allin": h["allin"], "morgen": h["morgen"]}
+
+    if price["level"] == GOEDKOOP:
+        h = first(lambda x: x["level"] != GOEDKOOP)
+        return pack("voordelig_tot", h) if h else None
+    goed = first(lambda x: x["level"] == GOEDKOOP)
+    if price["level"] == NORMAAL:
+        duur = first(lambda x: x["level"] == DUUR)
+        if duur and (not goed or upcoming.index(duur) < upcoming.index(goed)):
+            return pack("duur_vanaf", duur)
+    return pack("voordelig_vanaf", goed) if goed else None
+
+
 def current_hour(now=None):
     now = now or dt.datetime.now(TZ).timestamp()
     return int(now - now % 3600)
