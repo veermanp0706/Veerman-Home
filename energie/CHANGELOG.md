@@ -1,5 +1,13 @@
 # Wijzigingen
 
+## 0.3.4
+
+- iPhone-icoon: oranje zonnepaneel op een donkere achtergrond, zodat het oranje ook in de donkere stijl van het beginscherm zichtbaar blijft.
+
+## 0.3.3
+
+- iPhone-icoon: wit zonnepaneel op oranje, zodat het ook zichtbaar blijft als het beginscherm in de donkere stijl staat.
+
 ## 0.3.2
 
 - Nieuw app-icoon: het zonnepaneel uit de zijbalk (solar-power-variant), zwart op oranje. Ook als PNG, zodat de iPhone het gebruikt bij "Zet op beginscherm".
