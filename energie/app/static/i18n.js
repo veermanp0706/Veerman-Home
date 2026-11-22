@@ -188,6 +188,9 @@ const TEKSTEN = {
     "rij.ha_bezig": "bezig met ophalen…",
     "rij.ha_wacht": "Start zo",
     "rij.ha_fout": "Mislukt: {fout}",
+    "rij.ha_uit_uitgezet": "Uit (in de configuratie)",
+    "rij.ha_uit_demo": "Uit (demomodus)",
+    "rij.ha_uit_geen_toegang": "Geen toegang tot Home Assistant",
   },
 
   en: {
@@ -376,6 +379,9 @@ const TEKSTEN = {
     "rij.ha_bezig": "retrieving…",
     "rij.ha_wacht": "Starting soon",
     "rij.ha_fout": "Failed: {fout}",
+    "rij.ha_uit_uitgezet": "Off (in the configuration)",
+    "rij.ha_uit_demo": "Off (demo mode)",
+    "rij.ha_uit_geen_toegang": "No access to Home Assistant",
   },
 };
 

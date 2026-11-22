@@ -20,13 +20,31 @@ from storage import Storage
 from tariffs import Tariffs
 from timeutil import TZ, hhmm, parse_day
 
-VERSION = "0.5.1"
+VERSION = "0.5.2"
 DATA_DIR = os.environ.get("DATA_DIR", "/data")
 OPTIONS_PATH = os.environ.get("OPTIONS_PATH", os.path.join(DATA_DIR, "options.json"))
 STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
 PORT = int(os.environ.get("PORT", "8099"))
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+# Tijden in het logboek in Nederlandse tijd (de container draait zelf op UTC)
+logging.Formatter.converter = lambda *a: dt.datetime.now(TZ).timetuple()
+
+
+def supervisor_token():
+    """De toegangssleutel tot Home Assistant. De startlaag (s6) van de container wist
+    de omgevingsvariabelen; daarom ook kijken waar s6 ze bewaart."""
+    for name in ("SUPERVISOR_TOKEN", "HASSIO_TOKEN"):
+        if os.environ.get(name):
+            return os.environ[name].strip()
+        try:
+            with open(f"/run/s6/container_environment/{name}", encoding="utf-8") as f:
+                v = f.read().strip()
+            if v:
+                return v
+        except OSError:
+            pass
+    return None
 log = logging.getLogger("app")
 
 STATIC = {
@@ -136,10 +154,18 @@ class App:
         self.collector = Collector(gw, self.store, self.opts.get("poll_interval", 5)) if gw else None
         self.prices = PriceService(self.store, demo=self.demo)
         self.system = system.SystemStatus(self)
-        ha_token = os.environ.get("SUPERVISOR_TOKEN")
+        ha_token = supervisor_token()
         self.importer = None
-        if ha_token and not self.demo and self.opts.get("historie_uit_ha", True):
+        self.importer_uit = None
+        if self.demo:
+            self.importer_uit = "demo"
+        elif not self.opts.get("historie_uit_ha", True):
+            self.importer_uit = "uitgezet"
+        elif not ha_token:
+            self.importer_uit = "geen_toegang"
+        else:
             self.importer = ha_import.Importer(self.store, self.prices, ha_token)
+        log.info("historie uit Home Assistant: %s", "aan" if self.importer else "uit (" + self.importer_uit + ")")
 
     def start(self):
         if self.collector:

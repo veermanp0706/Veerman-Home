@@ -1,5 +1,11 @@
 # Wijzigingen
 
+## 0.5.2
+
+- Het ophalen van de historie uit Home Assistant startte niet: de toegangssleutel werd bij de start van de container gewist. Opgelost.
+- Op Status staat nu altijd of de historie uit Home Assistant aan staat, en zo niet, waarom.
+- Tijden in het logboek staan nu in Nederlandse tijd.
+
 ## 0.5.1
 
 - Historie aanvullen uit Home Assistant: de app haalt uurtotalen op uit het Energie-dashboard (of de Enphase-integratie) voor de periode van vóór de app, inclusief de prijzen van die dagen. Te zien op Status onder App.

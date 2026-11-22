@@ -626,6 +626,7 @@ function tekenStatus(d) {
 
 function haRijen(h) {
   if (!h) return [];
+  if (h.status === "uit") return [[t("rij.ha"), t("rij.ha_uit_" + (h.reden || "uitgezet")), h.reden === "geen_toegang" ? "let_op" : ""]];
   if (h.status === "fout") return [[t("rij.ha"), t("rij.ha_fout", { fout: h.fout || "" }), "let_op"]];
   if (h.sinds) return [[t("rij.ha"), t("rij.ha_sinds", { datum: h.sinds }) + (h.status === "bezig" ? " · " + t("rij.ha_bezig") : ""), "ok"]];
   return [[t("rij.ha"), t(h.status === "bezig" ? "rij.ha_bezig" : "rij.ha_wacht")]];

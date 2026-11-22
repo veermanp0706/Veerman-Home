@@ -355,7 +355,7 @@ class SystemStatus:
             "prijzen_fout": app.prices.last_error,
             "database_mb": db_mb,
             "metingen_sinds": _dt(first).strftime("%d-%m-%Y") if first else None,
-            "ha_historie": app.importer.info() if getattr(app, "importer", None) else None,
+            "ha_historie": app.importer.info() if getattr(app, "importer", None) else {"status": "uit", "reden": getattr(app, "importer_uit", None)},
         }
 
 
