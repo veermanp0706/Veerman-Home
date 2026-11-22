@@ -1,5 +1,9 @@
 # Wijzigingen
 
+## 0.3.1
+
+- panel_admin: false
+
 ## 0.3.0
 
 - Energiestromen: groter diagram waarin zon, batterij, net en huis allemaal met elkaar verbonden zijn. De app berekent welke stroom van waar naar waar gaat (bijvoorbeeld zon naar batterij, of net naar batterij bij nachtladen).
