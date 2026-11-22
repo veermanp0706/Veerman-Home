@@ -214,23 +214,51 @@
       </div>
     </header>
     <main>
-      <section class="card grid2" data-t-aria="hist.totalen" aria-label="Totalen">
-        <div class="stat"><span data-t="stat.verbruik">Verbruik</span><b id="h-verbruik">–</b></div>
-        <div class="stat"><span data-t="stat.opgewekt">Opgewekt</span><b class="c-zon" id="h-opgewekt">–</b></div>
-        <div class="stat"><span data-t="stat.afgenomen">Afgenomen</span><b class="c-net" id="h-afname">–</b></div>
-        <div class="stat"><span data-t="stat.terug">Terug</span><b id="h-terug">–</b></div>
+      <section class="card overzicht" data-t-aria="hist.overzicht" aria-label="Overzicht">
+        <div class="kant">
+          <div class="getal"><b class="c-net" id="h-afname">–</b><span data-t="hist.uit_net">Uit het net</span></div>
+          <div class="getal"><b class="c-zon" id="h-opgewekt">–</b><span data-t="stat.opgewekt">Opgewekt</span></div>
+          <div class="getal"><b class="c-bat" id="h-bat-uit">–</b><span data-t="hist.uit_batterij">Uit batterij</span></div>
+        </div>
+        <div class="ring" role="img" id="h-ring">
+          <svg viewBox="0 0 128 128" aria-hidden="true">
+            <circle cx="64" cy="64" r="52" class="ring-grond"/>
+            <g id="h-ring-delen" transform="rotate(-90 64 64)"></g>
+          </svg>
+          <div class="ring-tekst"><span data-t="hist.verbruikt">Verbruikt</span><b id="h-verbruik">–</b><span>kWh</span></div>
+        </div>
+        <div class="kant rechts">
+          <div class="getal"><b class="c-terug" id="h-terug">–</b><span data-t="hist.teruggeleverd">Teruggeleverd</span></div>
+          <div class="getal"><b id="h-netto">–</b><span data-t="hist.netto">Netto afgenomen</span></div>
+          <div class="getal"><b class="c-bat" id="h-bat-in">–</b><span data-t="hist.in_batterij">In batterij</span></div>
+        </div>
+        <div class="aandelen" id="h-aandelen"></div>
       </section>
-      <section class="card" data-t-aria="hist.herkomst" aria-label="Herkomst van je stroom">
-        <h2 data-t="hist.herkomst">Waar je stroom vandaan kwam</h2>
+
+      <section class="card" data-t-aria="hist.energie" aria-label="Energie">
+        <div class="row"><h2 id="h-grafiek-titel">Energie per kwartier</h2><span class="note">kWh</span></div>
+        <div class="legend wrap"><b data-t="hist.kwam_binnen">▲ Kwam binnen</b><span><i class="sw c-bg-zon"></i><span data-t="node.zon">Zon</span></span><span><i class="sw goedkoop"></i><span data-t="node.batterij">Batterij</span></span><span><i class="sw c-bg-net"></i><span data-t="node.net">Net</span></span></div>
         <div class="chart">
-          <div class="yaxis" aria-hidden="true"><span id="hy-max"></span><span id="hy-mid"></span><span>0</span></div>
-          <div class="bars gestapeld" id="h-bars" role="img"></div>
+          <div class="yaxis dubbel" aria-hidden="true"><span id="hy-max"></span><span>0</span><span id="hy-min"></span></div>
+          <svg class="tweezijdig" id="h-bars" role="img" preserveAspectRatio="none"></svg>
         </div>
         <div class="axis pad" id="h-as"></div>
-        <div class="legend pad">
-          <span><i class="sw c-bg-zon"></i><span data-t="node.zon">Zon</span></span><span><i class="sw goedkoop"></i><span data-t="node.batterij">Batterij</span></span><span><i class="sw c-bg-net"></i><span data-t="node.net">Net</span></span>
-        </div>
+        <div class="legend wrap"><b data-t="hist.ging_naar">▼ Ging naar</b><span><i class="sw c-bg-huis"></i><span data-t="node.huis">Huis</span></span><span><i class="sw c-bg-batin"></i><span data-t="node.batterij">Batterij</span></span><span><i class="sw c-bg-terug"></i><span data-t="node.terug">Terug</span></span></div>
+        <p class="note detail" id="h-detail" data-t="hist.tik">Tik op een kolom voor de waarden.</p>
         <p class="note" id="h-laadnoot"></p>
+      </section>
+
+      <section class="card" id="h-soc-kaart" data-t-aria="bat.laadtoestand" aria-label="Laadtoestand" hidden>
+        <div class="row"><h2 data-t="hist.laadtoestand">Laadtoestand batterij</h2><span class="status" id="h-soc-nu"></span></div>
+        <div class="chart">
+          <div class="yaxis kort" aria-hidden="true"><span>100%</span><span>0%</span></div>
+          <svg class="soc-curve" id="h-soc" viewBox="0 0 316 80" preserveAspectRatio="none" role="img">
+            <defs><linearGradient id="soc-vul" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="soc-stop1"/><stop offset="1" class="soc-stop2"/></linearGradient></defs>
+            <line x1="0" y1="2" x2="316" y2="2" class="grid"/><line x1="0" y1="78" x2="316" y2="78" class="grid sterk"/>
+            <path id="h-soc-vlak" fill="url(#soc-vul)"/><path id="h-soc-lijn" class="soc-lijn"/>
+          </svg>
+        </div>
+        <div class="axis pad"><span>00</span><span>06</span><span>12</span><span>18</span><span>24</span></div>
       </section>
       <p class="note center" id="h-dekking"></p>
     </main>

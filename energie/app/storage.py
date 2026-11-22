@@ -122,6 +122,35 @@ class Storage:
             out[ts] = hour_from_kwh(pv, load, imp_, exp, b_in, b_out)
         return dict(sorted(out.items()))
 
+    def quarterly(self, start, end):
+        """Energie per kwartier in kWh: wat binnenkwam (zon, batterij, net) en waar het heen ging.
+        Uren waarvoor alleen Home Assistant-gegevens zijn, worden gelijk over vier kwartieren verdeeld."""
+        sql = """
+            SELECT ts - (ts % 900) AS q,
+                   SUM(pv), SUM(load), SUM(MAX(grid, 0)), SUM(MAX(-grid, 0)),
+                   SUM(MAX(batt, 0)), SUM(MAX(-batt, 0)), COUNT(*)
+            FROM minute WHERE ts >= ? AND ts < ?
+            GROUP BY q ORDER BY q
+        """
+        with self._lock:
+            rows = self._db.execute(sql, (start, end)).fetchall()
+            imp = self._db.execute(
+                "SELECT ts, pv, load, import, export, batt_in, batt_out FROM hour_import WHERE ts >= ? AND ts < ?",
+                (start, end),
+            ).fetchall()
+        out, per_uur = {}, {}
+        for q, pv, load, imp_, exp, b_out, b_in, n in rows:
+            out[q] = {"zon": (pv or 0) / WM, "huis": (load or 0) / WM, "net": (imp_ or 0) / WM, "terug": (exp or 0) / WM,
+                      "bat_uit": (b_out or 0) / WM, "bat_in": (b_in or 0) / WM, "uur": False}
+            per_uur[q - q % 3600] = per_uur.get(q - q % 3600, 0) + n
+        for ts, pv, load, imp_, exp, b_in, b_out in imp:
+            if per_uur.get(ts, 0) >= 55:
+                continue
+            for i in range(4):
+                out[ts + i * 900] = {"zon": (pv or 0) / 4, "huis": (load or 0) / 4, "net": (imp_ or 0) / 4, "terug": (exp or 0) / 4,
+                                     "bat_uit": (b_out or 0) / 4, "bat_in": (b_in or 0) / 4, "uur": True}
+        return out
+
     def write_import(self, rows):
         with self._lock:
             self._db.executemany(
@@ -141,7 +170,13 @@ class Storage:
                 "SELECT ts - (ts % ?) AS t, AVG(soc) FROM minute WHERE ts >= ? AND ts < ? AND soc IS NOT NULL GROUP BY t ORDER BY t",
                 (step, start, end),
             )
-            return [(r[0], r[1]) for r in cur.fetchall()]
+            eigen = [(r[0], r[1]) for r in cur.fetchall()]
+            uren = self._db.execute(
+                "SELECT ts, soc FROM hour_import WHERE ts >= ? AND ts < ? AND soc IS NOT NULL ORDER BY ts", (start, end)
+            ).fetchall()
+        gemeten = {t - t % 3600 for t, _ in eigen}
+        extra = [(ts + 1800, v) for ts, v in uren if ts not in gemeten]  # midden van het uur
+        return sorted(eigen + extra)
 
     def first_soc_at_least(self, start, end, level):
         with self._lock:

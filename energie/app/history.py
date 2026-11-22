@@ -141,6 +141,13 @@ def stored_delta(store, start_day, end_day, cap):
 
 def totals_json(tot, cap, delta=0.0):
     return {
+        "uit_batterij_kwh": round(tot["batt_out"], 3),
+        "in_batterij_kwh": round(tot["batt_in"], 3),
+        "netto_afname_kwh": round(tot["import"] - tot["export"], 3),
+        # waar het huisverbruik vandaan kwam (voor de ring)
+        "huis_uit_zon_kwh": round(tot["pv_house"], 3),
+        "huis_uit_batterij_kwh": round(tot["batt_house"], 3),
+        "huis_uit_net_kwh": round(tot["net_house"], 3),
         "verbruik_kwh": round(tot["load"], 3),
         "opgewekt_kwh": round(tot["pv"], 3),
         "afname_kwh": round(tot["import"], 3),
@@ -182,16 +189,31 @@ def period(store, tariffs, periode, day, cap):
             buckets[dt.datetime.fromtimestamp(ts, TZ).month - 1]["items"].append(e)
 
     reeks = []
-    for b in buckets:
-        t = sum_details(b["items"])
-        reeks.append({
-            "label": b["label"],
-            "zon": round(t["pv_house"], 3),
-            "batterij": round(t["batt_house"], 3),
-            "net": round(t["net_house"], 3),
-            "kosten": round(t["cost"], 2),
-            "heeft_data": t["minutes"] > 0,
-        })
+    if periode == "dag":
+        # per kwartier: wat binnenkwam en waar het heen ging
+        kw = store.quarterly(epoch(start_day), epoch(end_day))
+        for ts in range(epoch(start_day), epoch(end_day), 900):
+            q = kw.get(ts)
+            reeks.append({
+                "label": hhmm(ts),
+                "in": {k: round(q[k], 4) for k in ("zon", "bat_uit", "net")} if q else None,
+                "uit": {k: round(q[k], 4) for k in ("huis", "bat_in", "terug")} if q else None,
+                "per_uur": bool(q and q["uur"]),
+            })
+    else:
+        for b in buckets:
+            t = sum_details(b["items"])
+            reeks.append({
+                "label": b["label"],
+                "in": {"zon": round(t["pv"], 3), "bat_uit": round(t["batt_out"], 3), "net": round(t["import"], 3)},
+                "uit": {"huis": round(t["load"], 3), "bat_in": round(t["batt_in"], 3), "terug": round(t["export"], 3)},
+                "kosten": round(t["cost"], 2),
+                "heeft_data": t["minutes"] > 0,
+            })
+    soc = []
+    if periode == "dag":
+        s0 = epoch(start_day)
+        soc = [{"uur": round((t - s0) / 3600, 3), "soc": round(v, 1)} for t, v in store.soc_series(s0, epoch(end_day), 900)]
 
     tot = sum_details(details.values())
 
@@ -215,6 +237,7 @@ def period(store, tariffs, periode, day, cap):
         "eerder_beschikbaar": first is not None and first < epoch(start_day),
         "totaal": totals_json(tot, cap, stored_delta(store, start_day, end_day, cap)),
         "reeks": reeks,
+        "laadtoestand": soc,
         "vergelijk": vergelijk,
         "lopend": start_day <= today < end_day,
     }

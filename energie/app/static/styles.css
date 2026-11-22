@@ -33,6 +33,10 @@
   --ok-bg: rgba(24, 148, 107, 0.14);
   --let-bg: rgba(232, 162, 0, 0.18);
   --fout-bg: rgba(224, 62, 91, 0.12);
+  --huis: #FF7A1A;
+  --bat-licht: #7FD1B0;
+  --net-licht: #9DB0FF;
+  --terug-tekst: #3552C9;
 
   --letter: Manrope, system-ui, -apple-system, sans-serif;
   color-scheme: light;
@@ -65,6 +69,9 @@
   --ok-bg: rgba(76, 199, 154, 0.16);
   --let-bg: rgba(242, 182, 50, 0.18);
   --fout-bg: rgba(255, 126, 147, 0.16);
+  --bat-licht: #3E9E7C;
+  --net-licht: #6E82D6;
+  --terug-tekst: #A9B8FF;
   color-scheme: dark;
 }
 
@@ -347,5 +354,55 @@ body.toetsenbord button:focus-visible { outline: 3px solid var(--oranje); outlin
 .keuze[aria-checked="true"] .vinkje { background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23FF7A1A' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center / 20px no-repeat; }
 .groot-kv { font-size: 15px; gap: 10px 16px; }
 .pad-l { padding: 0 8px; }
+
+/* ===== Historie: overzicht met ring ===== */
+.overzicht { display: grid; grid-template-columns: minmax(0, 1fr) 120px minmax(0, 1fr); align-items: center; gap: 6px; padding: 16px 12px 12px; }
+.overzicht .kant { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.overzicht .kant.rechts { align-items: flex-end; text-align: right; }
+.overzicht .getal { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.overzicht .kant.rechts .getal { align-items: flex-end; }
+.overzicht .getal b { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; white-space: nowrap; }
+.overzicht .getal b small { font-size: 10.5px; font-weight: 500; color: var(--stil); }
+.overzicht .getal span { font-size: 11px; color: var(--stil); }
+.c-terug { color: var(--terug-tekst); }
+.ring { position: relative; width: 120px; height: 120px; }
+.ring svg { width: 120px; height: 120px; display: block; }
+.ring-grond { fill: var(--node); stroke: var(--lijn); stroke-width: 11; }
+.ring .ring-deel { fill: none; stroke-width: 11; stroke-linecap: round; }
+.ring-deel.r-zon { stroke: var(--zon); }
+.ring-deel.r-bat { stroke: var(--bat); }
+.ring-deel.r-net { stroke: var(--net); }
+.ring-tekst { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.ring-tekst span { font-size: 11px; color: var(--stil); }
+.ring-tekst b { font-size: 19px; font-weight: 600; color: var(--huis); letter-spacing: -0.02em; }
+.aandelen { grid-column: 1 / -1; display: flex; justify-content: center; gap: 14px; font-size: 12px; color: var(--stil); padding-top: 4px; }
+.aandelen b { font-weight: 700; }
+
+/* ===== Historie: tweezijdige grafiek ===== */
+.legend.wrap { flex-wrap: wrap; gap: 4px 12px; }
+.legend.wrap > b { font-weight: 600; color: var(--inkt); }
+.yaxis.dubbel { height: 220px; }
+.yaxis.kort { height: 80px; }
+.tweezijdig { flex: 1; min-width: 0; height: 220px; display: block; cursor: pointer; touch-action: manipulation; }
+.tweezijdig .grid { stroke: var(--lijn); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.tweezijdig .nul { stroke: var(--inkt); stroke-opacity: 0.45; stroke-width: 1; vector-effect: non-scaling-stroke; }
+.tweezijdig .markeer { fill: var(--inkt); fill-opacity: 0.07; }
+.r-zon { fill: var(--zon); }
+.r-bat { fill: var(--bat); }
+.r-net { fill: var(--net); }
+.r-huis { fill: var(--huis); }
+.r-batin { fill: var(--bat-licht); }
+.r-terug { fill: var(--net-licht); }
+.c-bg-huis { background: var(--huis); }
+.c-bg-batin { background: var(--bat-licht); }
+.c-bg-terug { background: var(--net-licht); }
+.detail { min-height: 34px; }
+.detail b { color: var(--inkt); font-weight: 600; }
+.soc-curve { flex: 1; min-width: 0; height: 80px; display: block; }
+.soc-curve .grid { stroke: var(--lijn); vector-effect: non-scaling-stroke; }
+.soc-curve .grid.sterk { stroke: var(--lijn-sterk); }
+.soc-stop1 { stop-color: var(--bat); stop-opacity: 0.45; }
+.soc-stop2 { stop-color: var(--bat); stop-opacity: 0.04; }
+.soc-lijn { fill: none; stroke: var(--bat); stroke-width: 2; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
 
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }

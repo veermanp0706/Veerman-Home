@@ -1,5 +1,20 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <!-- Icoon: solar-power-variant uit Material Design Icons (Pictogrammers Free License) -->
-  <rect width="512" height="512" rx="112" fill="#FF7A1A"/>
-  <g transform="translate(96 96) scale(13.3333)"><path d="M3.33 16H11V13H4L3.33 16M13 16H20.67L20 13H13V16M21.11 18H13V22H22L21.11 18M2 22H11V18H2.89L2 22M11 8H13V11H11V8M15.76 7.21L17.18 5.79L19.3 7.91L17.89 9.33L15.76 7.21M4.71 7.91L6.83 5.79L8.24 7.21L6.12 9.33L4.71 7.91M3 2H6V4H3V2M18 2H21V4H18V2M12 7C14.76 7 17 4.76 17 2H7C7 4.76 9.24 7 12 7Z" fill="#20150E"/></g>
+<!-- App-icoon: glazen zon met bliksem (eigen ontwerp) -->
+<defs>
+  <radialGradient id="ibg" cx="50%" cy="38%" r="75%"><stop offset="0" stop-color="#3A2416"/><stop offset="1" stop-color="#120C08"/></radialGradient>
+  <radialGradient id="igloed" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#FF8A2A" stop-opacity="0.85"/><stop offset="0.55" stop-color="#FF6A00" stop-opacity="0.28"/><stop offset="1" stop-color="#FF6A00" stop-opacity="0"/></radialGradient>
+  <linearGradient id="iglas" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity="0.34"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="0.06"/></linearGradient>
+  <linearGradient id="iglans" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity="0.75"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/></linearGradient>
+  <linearGradient id="ioranje" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFB45E"/><stop offset="1" stop-color="#FF6A00"/></linearGradient>
+  <linearGradient id="irand" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity="0.8"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="0.15"/></linearGradient>
+  <filter id="iblur" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="18"/></filter>
+  <clipPath id="itegel"><rect width="512" height="512" rx="114"/></clipPath>
+</defs>
+<rect width="512" height="512" rx="114" fill="url(#ibg)"/><g clip-path="url(#itegel)">
+  <circle cx="256" cy="270" r="230" fill="url(#igloed)"/>
+  <circle cx="256" cy="256" r="160" fill="url(#iglas)" stroke="url(#irand)" stroke-width="3"/>
+  <ellipse cx="256" cy="150" rx="104" ry="40" fill="url(#iglans)" opacity="0.55"/>
+  <path d="M282 96 L150 290 H244 L218 416 L362 206 H268 Z" transform="translate(256 256) scale(0.62) translate(-256 -256)" fill="#FF6A00" filter="url(#iblur)" opacity="0.9"/>
+  <path d="M282 96 L150 290 H244 L218 416 L362 206 H268 Z" transform="translate(256 256) scale(0.62) translate(-256 -256)" fill="url(#ioranje)" stroke="#FFD9B0" stroke-opacity="0.6" stroke-width="3" stroke-linejoin="round"/>
+</g>
 </svg>

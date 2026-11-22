@@ -371,58 +371,159 @@ function tekenHistorie(d) {
   $("h-vorige").disabled = !d.eerder_beschikbaar;
   const tt = d.totaal;
   $("h-kosten-label").textContent = t(d.lopend ? "hist.kosten_lopend" : "hist.kosten");
-  $("h-kosten").textContent = tt.meetminuten ? euro(tt.kosten, 3) : "–";
-  $("h-vergelijk").textContent = d.vergelijk ? `${d.vergelijk.label} ${euro(d.vergelijk.kosten, 3)}` : "";
-  $("h-verbruik").textContent = kwh3(tt.verbruik_kwh);
-  $("h-opgewekt").textContent = kwh3(tt.opgewekt_kwh);
-  $("h-afname").textContent = kwh3(tt.afname_kwh);
-  $("h-terug").textContent = kwh3(tt.terug_kwh);
+  // Uitzondering: stroomkosten op Historie met twee decimalen
+  $("h-kosten").textContent = tt.meetminuten ? euro(tt.kosten, 2) : "–";
+  $("h-vergelijk").textContent = d.vergelijk ? `${d.vergelijk.label} ${euro(d.vergelijk.kosten, 2)}` : "";
+  // Overzicht met ring
+  $("h-verbruik").textContent = fmtGetal(tt.verbruik_kwh, 3);
+  $("h-afname").innerHTML = kwhKlein(tt.afname_kwh);
+  $("h-opgewekt").innerHTML = kwhKlein(tt.opgewekt_kwh);
+  $("h-bat-uit").innerHTML = kwhKlein(tt.uit_batterij_kwh);
+  $("h-terug").innerHTML = kwhKlein(tt.terug_kwh);
+  $("h-netto").innerHTML = kwhKlein(tt.netto_afname_kwh);
+  $("h-bat-in").innerHTML = kwhKlein(tt.in_batterij_kwh);
+  tekenRing(tt);
 
-  const reeks = d.reeks;
-  const totalen = reeks.map((r) => r.zon + r.batterij + r.net);
-  const max = Math.max(0.05, ...totalen);
-  const stap = max <= 1 ? 0.1 : max <= 5 ? 0.5 : max <= 20 ? 2 : max <= 100 ? 10 : 50;
-  const top = Math.ceil(max / stap) * stap;
-  const dec = top < 1 ? 1 : 0;
-  $("hy-max").textContent = fmtGetal(top, dec);
-  $("hy-mid").textContent = fmtGetal(top / 2, dec);
-
-  const bars = $("h-bars");
-  bars.textContent = "";
-  const eenheid = t(d.periode === "dag" ? "hist.per_uur" : d.periode === "jaar" ? "hist.per_maand" : "hist.per_dag");
-  bars.setAttribute("aria-label", t("hist.bars_aria", { eenheid, totaal: kwh3(tt.verbruik_kwh) }));
-  for (const r of reeks) {
-    const kolom = document.createElement("i");
-    const hoog = (v) => (v / top) * 140;
-    kolom.style.height = hoog(r.zon + r.batterij + r.net) + "px";
-    kolom.title = t("hist.tip", { label: r.label, zon: kwh3(r.zon), bat: kwh3(r.batterij), net: kwh3(r.net) }) + (r.heeft_data ? ", " + euro(r.kosten, 3) : "");
-    for (const [cls, v] of [["zon", r.zon], ["bat", r.batterij], ["net", r.net]]) {
-      if (v <= 0) continue;
-      const b = document.createElement("b");
-      b.className = cls;
-      b.style.height = hoog(v) + "px";
-      kolom.appendChild(b);
-    }
-    bars.appendChild(kolom);
-  }
-
-  const as = $("h-as");
-  as.textContent = "";
-  const n = reeks.length;
-  const ticks = d.periode === "dag" ? [0, 6, 12, 18, n - 1] : d.periode === "maand" ? [0, 9, 19, n - 1] : reeks.map((_, i) => i);
-  as.className = "axis pad dicht";
-  reeks.forEach((r, i) => {
-    const s = document.createElement("span");
-    s.textContent = ticks.includes(i) ? r.label : "";
-    as.appendChild(s);
-  });
-
+  tekenTweezijdig(d);
+  tekenSoc(d);
   const b = tt.batterij;
   $("h-laadnoot").textContent = b.uit_net_kwh > 0.05 ? t("hist.laadnoot", { kwh: kwh3(b.uit_net_kwh) }) : "";
   let dekking = "";
   if (!tt.meetminuten) dekking = t("hist.geen");
   else if (tt.uren_zonder_prijs) dekking = t("hist.zonderprijs", { uren: tt.uren_zonder_prijs });
   $("h-dekking").textContent = dekking;
+}
+
+const kwhKlein = (v) => (v == null ? "–" : `${fmtGetal(v, 3)}<small> kWh</small>`);
+
+function tekenRing(tt) {
+  const delen = [["zon", tt.huis_uit_zon_kwh], ["bat", tt.huis_uit_batterij_kwh], ["net", tt.huis_uit_net_kwh]];
+  const som = delen.reduce((a, [, v]) => a + (v || 0), 0);
+  const g = $("h-ring-delen");
+  g.textContent = "";
+  const r = 52, omtrek = 2 * Math.PI * r;
+  let af = 0;
+  const pct = {};
+  for (const [k, v] of delen) {
+    const deel = som > 0 ? (v || 0) / som : 0;
+    pct[k] = Math.round(deel * 100);
+    if (deel <= 0.001) continue;
+    const l = deel * omtrek;
+    g.appendChild(svg("circle", {
+      cx: 64, cy: 64, r, class: "ring-deel r-" + k,
+      "stroke-dasharray": `${Math.max(l - 3, 0.5).toFixed(1)} ${omtrek.toFixed(1)}`, "stroke-dashoffset": (-af).toFixed(1),
+    }));
+    af += l;
+  }
+  $("h-aandelen").innerHTML = som > 0
+    ? `<span><b class="c-zon">${pct.zon}%</b> ${t("naam.zon")}</span><span><b class="c-bat">${pct.bat}%</b> ${t("naam.batterij")}</span><span><b class="c-net">${pct.net}%</b> ${t("naam.net")}</span>`
+    : "";
+  $("h-ring").setAttribute("aria-label", t("hist.ring_aria", { kwh: kwh3(tt.verbruik_kwh), zon: pct.zon || 0, bat: pct.bat || 0, net: pct.net || 0 }));
+}
+
+const IN = [["zon", "zon"], ["bat_uit", "bat"], ["net", "net"]];
+const UIT = [["huis", "huis"], ["bat_in", "batin"], ["terug", "terug"]];
+
+function netteSchaal(max) {
+  const stappen = [0.05, 0.1, 0.2, 0.25, 0.5, 1, 2, 2.5, 5, 10, 20, 25, 50, 100, 200, 250, 500, 1000];
+  return stappen.find((s) => s >= max) || Math.ceil(max / 1000) * 1000;
+}
+
+function tekenTweezijdig(d) {
+  const reeks = d.reeks;
+  const n = reeks.length;
+  const somIn = (r) => (r.in ? r.in.zon + r.in.bat_uit + r.in.net : 0);
+  const somUit = (r) => (r.uit ? r.uit.huis + r.uit.bat_in + r.uit.terug : 0);
+  const max = Math.max(0.01, ...reeks.map(somIn), ...reeks.map(somUit));
+  const top = netteSchaal(max * 1.05);
+  const dec = top < 1 ? 2 : top < 10 ? 1 : 0;
+  $("hy-max").textContent = fmtGetal(top, dec);
+  $("hy-min").textContent = fmtGetal(top, dec);
+  $("h-grafiek-titel").textContent = t(d.periode === "dag" ? "hist.per_kwartier" : d.periode === "jaar" ? "hist.per_maand_titel" : "hist.per_dag_titel");
+
+  const W = 316, H = 220, M = H / 2, bw = W / n, gat = n > 40 ? 0.9 : 3;
+  const el = $("h-bars");
+  el.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  el.textContent = "";
+  for (const y of [0, H / 4, (3 * H) / 4, H]) el.appendChild(svg("line", { x1: 0, x2: W, y1: y, y2: y, class: "grid" }));
+  const sy = (v) => (v / top) * M;
+  reeks.forEach((r, i) => {
+    const x = i * bw;
+    const g = svg("g", { class: r.per_uur ? "kolom per-uur" : "kolom" });
+    let y = M;
+    if (r.in) for (const [k, c] of IN) {
+      const h = Math.min(sy(r.in[k]), y);
+      if (h < 0.05) continue;
+      y -= h;
+      g.appendChild(svg("rect", { x: x.toFixed(2), y: y.toFixed(2), width: Math.max(bw - gat, 0.6).toFixed(2), height: h.toFixed(2), class: "r-" + c }));
+    }
+    y = M;
+    if (r.uit) for (const [k, c] of UIT) {
+      const h = Math.min(sy(r.uit[k]), H - y);
+      if (h < 0.05) continue;
+      g.appendChild(svg("rect", { x: x.toFixed(2), y: y.toFixed(2), width: Math.max(bw - gat, 0.6).toFixed(2), height: h.toFixed(2), class: "r-" + c }));
+      y += h;
+    }
+    el.appendChild(g);
+  });
+  el.appendChild(svg("line", { x1: 0, x2: W, y1: M, y2: M, class: "nul" }));
+  const markeer = svg("rect", { id: "h-markeer", x: -10, y: 0, width: bw, height: H, class: "markeer" });
+  el.insertBefore(markeer, el.firstChild);
+  el.setAttribute("aria-label", t("hist.bars_aria2", { in: kwh3(d.totaal.opgewekt_kwh + d.totaal.afname_kwh + d.totaal.uit_batterij_kwh), huis: kwh3(d.totaal.verbruik_kwh) }));
+
+  // As
+  const as = $("h-as");
+  as.textContent = "";
+  as.className = "axis pad";
+  if (d.periode === "dag") {
+    for (const l of ["00", "06", "12", "18", "24"]) { const s = document.createElement("span"); s.textContent = l; as.appendChild(s); }
+  } else {
+    as.className = "axis pad dicht";
+    const ticks = d.periode === "maand" ? [0, 9, 19, n - 1] : reeks.map((_, i) => i);
+    reeks.forEach((r, i) => { const s = document.createElement("span"); s.textContent = ticks.includes(i) ? r.label : ""; as.appendChild(s); });
+  }
+  $("h-detail").textContent = t("hist.tik");
+  histReeks = d;
+}
+
+let histReeks = null;
+function toonDetail(ev) {
+  const d = histReeks;
+  if (!d) return;
+  const el = $("h-bars");
+  const box = el.getBoundingClientRect();
+  const i = Math.min(d.reeks.length - 1, Math.max(0, Math.floor(((ev.clientX - box.left) / box.width) * d.reeks.length)));
+  const r = d.reeks[i];
+  const bw = 316 / d.reeks.length;
+  const m = $("h-markeer");
+  if (m) { m.setAttribute("x", (i * bw).toFixed(2)); m.setAttribute("width", bw.toFixed(2)); }
+  let wanneer = r.label;
+  if (d.periode === "dag") {
+    const [hh, mm] = r.label.split(":").map(Number);
+    const eind = new Date(2000, 0, 1, hh, mm + 15);
+    wanneer = `${r.label}–${String(eind.getHours()).padStart(2, "0")}:${String(eind.getMinutes()).padStart(2, "0")}`;
+  }
+  $("h-detail").innerHTML = !r.in ? `<b>${esc(wanneer)}</b> · ${esc(t("hist.geen_meting"))}` : t("hist.detail", {
+    wanneer: `<b>${esc(wanneer)}</b>`,
+    zon: kwh3(r.in.zon), bat: kwh3(r.in.bat_uit), net: kwh3(r.in.net),
+    huis: kwh3(r.uit.huis), batin: kwh3(r.uit.bat_in), terug: kwh3(r.uit.terug),
+  }) + (r.per_uur ? " " + esc(t("hist.per_uur_noot")) : "");
+}
+$("h-bars").addEventListener("click", toonDetail);
+$("h-bars").addEventListener("pointermove", (e) => { if (e.pointerType === "mouse") toonDetail(e); });
+
+function tekenSoc(d) {
+  const kaart = $("h-soc-kaart");
+  const pts = d.laadtoestand || [];
+  kaart.hidden = d.periode !== "dag" || !pts.length;
+  if (kaart.hidden) return;
+  const xy = pts.map((p) => [((p.uur / 24) * 316).toFixed(1), (78 - (p.soc / 100) * 76).toFixed(1)]);
+  const lijn = "M" + xy.map(([x, y]) => `${x} ${y}`).join(" L");
+  $("h-soc-lijn").setAttribute("d", lijn);
+  $("h-soc-vlak").setAttribute("d", `${lijn} L${xy[xy.length - 1][0]} 78 L${xy[0][0]} 78 Z`);
+  const laatste = pts[pts.length - 1];
+  $("h-soc-nu").textContent = d.lopend ? t("hist.soc_nu", { pct: Math.round(laatste.soc) }) : "";
+  $("h-soc").setAttribute("aria-label", t("bat.curve_nu", { pct: Math.round(laatste.soc) }));
 }
 
 async function verversHistorie() {
