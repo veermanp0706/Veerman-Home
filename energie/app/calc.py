@@ -110,14 +110,14 @@ def day_totals(store, tariffs, day, extra_rows=()):
             continue
         cost += e["import"] * tariffs.import_price(epex) - e["export"] * tariffs.export_value(epex, day)
     return {
-        "verbruik_kwh": round(tot["load"], 2),
-        "opgewekt_kwh": round(tot["pv"], 2),
-        "afname_kwh": round(tot["import"], 2),
-        "terug_kwh": round(tot["export"], 2),
-        "batterij_uit_kwh": round(tot["batt_out"], 2),
-        "batterij_in_kwh": round(tot["batt_in"], 2),
-        "kosten": round(cost, 2),
-        "vaste_kosten_dag": round(tariffs.fixed_day, 2),
+        "verbruik_kwh": round(tot["load"], 3),
+        "opgewekt_kwh": round(tot["pv"], 3),
+        "afname_kwh": round(tot["import"], 3),
+        "terug_kwh": round(tot["export"], 3),
+        "batterij_uit_kwh": round(tot["batt_out"], 3),
+        "batterij_in_kwh": round(tot["batt_in"], 3),
+        "kosten": round(cost, 3),
+        "vaste_kosten_dag": round(tariffs.fixed_day, 3),
         "uren_zonder_prijs": missing,
     }
 

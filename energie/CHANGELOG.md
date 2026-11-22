@@ -1,5 +1,11 @@
 # Wijzigingen
 
+## 0.3.0
+
+- Energiestromen: groter diagram waarin zon, batterij, net en huis allemaal met elkaar verbonden zijn. De app berekent welke stroom van waar naar waar gaat (bijvoorbeeld zon naar batterij, of net naar batterij bij nachtladen).
+- Geanimeerde stippen lopen van bron naar bestemming, twee keer per verversing. Lijndikte volgt het vermogen. Bij de systeeminstelling "minder beweging" staan de animaties uit.
+- Bedragen en kWh overal met drie decimalen, ook op Nu en Prijzen.
+
 ## 0.2.1
 
 - Scherm Nu: de melding zegt nu vanaf wanneer stroom weer voordelig is (eventueel morgen), of tot wanneer het voordelig blijft. Komt er eerst een duur blok, dan waarschuwt hij daarvoor.

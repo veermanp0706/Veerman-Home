@@ -96,23 +96,22 @@ body.toetsenbord button:focus-visible { outline: 3px solid var(--inkt); outline-
 .nu { outline: 2px solid var(--inkt); outline-offset: 1px; }
 
 /* Energiestromen */
-.flow { position: relative; width: 294px; height: 228px; align-self: center; }
-.flow svg { position: absolute; inset: 0; }
-.flow line { stroke: var(--normaal); stroke-width: 2; stroke-dasharray: 4 5; }
-.flow line.actief { stroke-dasharray: none; stroke-width: 2.5; }
-.node { position: absolute; width: 76px; height: 76px; border-radius: 50%; background: var(--kaart); border: 2px solid var(--normaal); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; text-align: center; }
-.node b { font-family: var(--kop); font-size: 15px; font-weight: 600; }
-.node span { font-size: 11px; color: var(--stil); }
-.node.zon { left: 109px; top: 0; border-color: var(--zon); }
-.node.zon span { color: var(--zon-tekst); }
-.node.bat { left: 0; top: 150px; border-color: var(--bat); }
-.node.bat span { color: var(--bat-tekst); }
-.node.net { left: 218px; top: 150px; }
-.node.net.actief { border-color: var(--net); }
-.node.net.actief span { color: var(--net-tekst); }
-.node.huis { left: 99px; top: 118px; width: 96px; height: 96px; background: var(--oranje); border: 0; }
-.node.huis b { font-size: 19px; font-weight: 700; }
-.node.huis span { color: var(--inkt); font-weight: 600; font-size: 12px; }
+.flow { width: 100%; max-width: 380px; height: auto; align-self: center; display: block; overflow: visible; }
+.flow .lijn { stroke: var(--rand-sterk); stroke-width: 2; stroke-dasharray: 3 6; fill: none; }
+.flow .lijn.actief { stroke-dasharray: none; stroke-opacity: 0.6; }
+.flow .stip { stroke: var(--kaart); stroke-width: 1.5; }
+.node circle { fill: var(--kaart); stroke: var(--normaal); stroke-width: 3; }
+.node .waarde { font-family: var(--kop); font-size: 19px; font-weight: 600; fill: var(--inkt); text-anchor: middle; dominant-baseline: middle; }
+.node .naam { font-size: 12px; fill: var(--stil); text-anchor: middle; dominant-baseline: middle; }
+.node.zon circle { stroke: var(--zon); }
+.node.zon .naam { fill: var(--zon-tekst); }
+.node.bat circle { stroke: var(--bat); }
+.node.bat .naam { fill: var(--bat-tekst); }
+.node.net.actief circle { stroke: var(--net); }
+.node.net.actief .naam { fill: var(--net-tekst); }
+.node.huis circle { fill: var(--oranje); stroke: none; }
+.node.huis .waarde { font-size: 23px; font-weight: 700; }
+.node.huis .naam { fill: var(--inkt); font-weight: 600; font-size: 13px; }
 
 /* Prijsgrafiek */
 .chart { display: flex; gap: 8px; }
@@ -129,7 +128,7 @@ body.toetsenbord button:focus-visible { outline: 3px solid var(--inkt); outline-
 .blok .stip { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
 .blok .tijd { flex: 1; }
 .blok .lvl { font-size: 12px; color: var(--stil); }
-.blok .bedrag { font-family: var(--kop); font-weight: 600; min-width: 92px; text-align: right; }
+.blok .bedrag { font-family: var(--kop); font-weight: 600; text-align: right; white-space: nowrap; }
 
 .bar-split { display: flex; height: 10px; border-radius: 999px; overflow: hidden; }
 .bar-split i:nth-child(1) { background: var(--oranje); }

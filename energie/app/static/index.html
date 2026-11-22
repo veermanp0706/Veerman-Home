@@ -42,26 +42,40 @@
 
       <section class="card" aria-label="Energiestromen">
         <h2>Energiestromen</h2>
-        <div class="flow">
-          <svg width="294" height="228" viewBox="0 0 294 228" aria-hidden="true">
-            <defs>
-              <marker id="m-zon" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="#E8A200"/></marker>
-              <marker id="m-bat" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="#18946B"/></marker>
-              <marker id="m-net" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="#4A6CF0"/></marker>
-            </defs>
-            <line id="lijn-zon" x1="147" y1="76" x2="147" y2="116"/>
-            <line id="lijn-bat" x1="74" y1="178" x2="100" y2="173"/>
-            <line id="lijn-net" x1="220" y1="178" x2="194" y2="173"/>
-          </svg>
-          <div class="node zon"><b id="w-zon">–</b><span>Zon</span></div>
-          <div class="node huis"><b id="w-huis">–</b><span>Huis</span></div>
-          <div class="node bat"><b id="w-bat">–</b><span id="bat-label">Batterij</span></div>
-          <div class="node net"><b id="w-net">–</b><span id="net-label">Net</span></div>
-        </div>
+        <svg class="flow" viewBox="0 0 340 372" role="img" id="flow" aria-label="Energiestromen">
+          <defs>
+            <marker id="m-zon" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L10 5L0 10z" fill="#E8A200"/></marker>
+            <marker id="m-bat" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L10 5L0 10z" fill="#18946B"/></marker>
+            <marker id="m-net" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L10 5L0 10z" fill="#4A6CF0"/></marker>
+          </defs>
+          <g id="flow-lijnen"></g>
+          <g id="flow-stippen"></g>
+          <g class="node zon">
+            <circle cx="170" cy="56" r="46"/>
+            <text x="170" y="56" class="waarde" id="w-zon">–</text>
+            <text x="170" y="76" class="naam">Zon</text>
+          </g>
+          <g class="node bat">
+            <circle cx="56" cy="196" r="46"/>
+            <text x="56" y="196" class="waarde" id="w-bat">–</text>
+            <text x="56" y="216" class="naam" id="bat-label">Batterij</text>
+          </g>
+          <g class="node net" id="node-net">
+            <circle cx="284" cy="196" r="46"/>
+            <text x="284" y="196" class="waarde" id="w-net">–</text>
+            <text x="284" y="216" class="naam" id="net-label">Net</text>
+          </g>
+          <g class="node huis">
+            <circle cx="170" cy="308" r="56"/>
+            <text x="170" y="309" class="waarde" id="w-huis">–</text>
+            <text x="170" y="331" class="naam">Huis</text>
+          </g>
+        </svg>
+        <p class="note center" id="flow-uitleg"></p>
       </section>
 
-      <section class="card grid4" aria-label="Vandaag">
-        <div class="stat"><span>Kosten</span><b id="t-kosten">–</b></div>
+      <section class="card grid2" aria-label="Vandaag">
+        <div class="stat"><span>Kosten vandaag</span><b id="t-kosten">–</b></div>
         <div class="stat"><span>Verbruik</span><b id="t-verbruik">–</b></div>
         <div class="stat"><span>Zon</span><b class="c-zon" id="t-zon">–</b></div>
         <div class="stat"><span>Batterij</span><b class="c-bat" id="t-bat">–</b></div>

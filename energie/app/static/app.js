@@ -4,9 +4,9 @@ const NIVEAU = { goedkoop: "Goedkoop", normaal: "Normaal", duur: "Duur" };
 const $ = (id) => document.getElementById(id);
 
 const fmtGetal = (v, d) => v.toLocaleString("nl-NL", { minimumFractionDigits: d, maximumFractionDigits: d });
-const euro = (v, d = 2) => (v == null ? "–" : (v < 0 ? "−€" : "€") + fmtGetal(Math.abs(v), d));
+const euro = (v, d = 3) => (v == null ? "–" : (v < 0 ? "−€" : "€") + fmtGetal(Math.abs(v), d));
 const watt = (w) => (w == null ? "–" : Math.round(Math.abs(w)).toLocaleString("nl-NL") + " W");
-const kwh = (v, d = 1) => (v == null ? "–" : fmtGetal(v, d) + " kWh");
+const kwh = (v, d = 3) => (v == null ? "–" : fmtGetal(v, d) + " kWh");
 const kwh3 = (v) => kwh(v, 3);
 
 let tab = "nu";
@@ -22,34 +22,114 @@ async function haal(pad) {
 
 /* ---------- Nu ---------- */
 
-function zetLijn(id, actief, kleur, marker, van, naar) {
-  const l = $(id);
-  l.setAttribute("x1", van[0]); l.setAttribute("y1", van[1]);
-  l.setAttribute("x2", naar[0]); l.setAttribute("y2", naar[1]);
-  l.classList.toggle("actief", actief);
-  l.style.stroke = actief ? kleur : "";
-  if (actief) l.setAttribute("marker-end", `url(#${marker})`); else l.removeAttribute("marker-end");
+const NODES = {
+  zon: { x: 170, y: 56, r: 46, kleur: "#E8A200", marker: "m-zon", naam: "zon" },
+  bat: { x: 56, y: 196, r: 46, kleur: "#18946B", marker: "m-bat", naam: "batterij" },
+  net: { x: 284, y: 196, r: 46, kleur: "#4A6CF0", marker: "m-net", naam: "net" },
+  huis: { x: 170, y: 308, r: 56, kleur: "#FF7A1A", marker: "", naam: "huis" },
+};
+const VERBINDINGEN = [["zon", "huis"], ["zon", "bat"], ["zon", "net"], ["bat", "huis"], ["bat", "net"], ["net", "huis"]];
+const DREMPEL = 15; // watt; daaronder geen stroom tonen
+let stroomSleutel = "";
+
+/** Verdeelt de gemeten vermogens over de verbindingen: van welke bron naar welke bestemming. */
+function verdeelStromen(v) {
+  const pv = Math.max(v.zon, 0);
+  let load = Math.max(v.huis, 0);
+  const ontlaad = Math.max(v.batterij, 0);
+  const laad = Math.max(-v.batterij, 0);
+  const afname = Math.max(v.net, 0);
+  const terug = Math.max(-v.net, 0);
+  const s = {};
+  let restZon = pv, restLaad = laad, restTerug = terug, restAfname = afname, restOntlaad = ontlaad;
+  const neem = (van, naar, a, b) => { const x = Math.min(a, b); if (x > 0) s[van + ">" + naar] = x; return x; };
+  let x = neem("zon", "huis", restZon, load); restZon -= x; load -= x;
+  x = neem("zon", "bat", restZon, restLaad); restZon -= x; restLaad -= x;
+  x = neem("zon", "net", restZon, restTerug); restZon -= x; restTerug -= x;
+  x = neem("bat", "huis", restOntlaad, load); restOntlaad -= x; load -= x;
+  x = neem("bat", "net", restOntlaad, restTerug); restOntlaad -= x; restTerug -= x;
+  x = neem("net", "huis", restAfname, load); restAfname -= x; load -= x;
+  x = neem("net", "bat", restAfname, restLaad); restAfname -= x; restLaad -= x;
+  return s;
 }
 
-function tekenStromen(v) {
-  const drempel = 15;
+function rand(a, b, extra) {
+  const dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy);
+  const ux = dx / len, uy = dy / len;
+  return {
+    x1: a.x + ux * (a.r + extra), y1: a.y + uy * (a.r + extra),
+    x2: b.x - ux * (b.r + extra), y2: b.y - uy * (b.r + extra),
+  };
+}
+
+function svg(tag, attrs) {
+  const el = document.createElementNS("http://www.w3.org/2000/svg", tag);
+  for (const [k, val] of Object.entries(attrs)) el.setAttribute(k, val);
+  return el;
+}
+
+function tekenStromen(v, interval) {
   $("w-zon").textContent = watt(v.zon);
   $("w-huis").textContent = watt(v.huis);
   $("w-bat").textContent = watt(v.batterij);
   $("w-net").textContent = watt(v.net);
   $("bat-label").textContent = "Batterij" + (v.laadtoestand != null ? " " + Math.round(v.laadtoestand) + "%" : "");
-  $("net-label").textContent = v.net > drempel ? "Afname" : v.net < -drempel ? "Terug" : "Net";
-  document.querySelector(".node.net").classList.toggle("actief", Math.abs(v.net) > drempel);
+  $("net-label").textContent = v.net > DREMPEL ? "Afname" : v.net < -DREMPEL ? "Terug" : "Net";
+  $("node-net").classList.toggle("actief", Math.abs(v.net) > DREMPEL);
 
-  zetLijn("lijn-zon", v.zon > drempel, "#E8A200", "m-zon", [147, 76], [147, 116]);
-  const batBuiten = [74, 178], batBinnen = [100, 173];
-  if (v.batterij > drempel) zetLijn("lijn-bat", true, "#18946B", "m-bat", batBuiten, batBinnen);
-  else if (v.batterij < -drempel) zetLijn("lijn-bat", true, "#18946B", "m-bat", batBinnen, batBuiten);
-  else zetLijn("lijn-bat", false, "", "", batBuiten, batBinnen);
-  const netBuiten = [220, 178], netBinnen = [194, 173];
-  if (v.net > drempel) zetLijn("lijn-net", true, "#4A6CF0", "m-net", netBuiten, netBinnen);
-  else if (v.net < -drempel) zetLijn("lijn-net", true, "#4A6CF0", "m-net", netBinnen, netBuiten);
-  else zetLijn("lijn-net", false, "", "", netBuiten, netBinnen);
+  const stromen = verdeelStromen(v);
+  const actief = Object.entries(stromen).filter(([, w]) => w >= DREMPEL);
+  const periode = Math.max(1, (interval || 5) / 2); // twee keer per verversing
+  const sleutel = actief.map(([k]) => k).sort().join(",") + "|" + periode;
+
+  const zinnen = actief.map(([k, w]) => {
+    const [van, naar] = k.split(">");
+    return `${watt(w)} van ${NODES[van].naam} naar ${NODES[naar].naam}`;
+  });
+  $("flow").setAttribute("aria-label", "Energiestromen: " + (zinnen.join(", ") || "geen stroom"));
+
+  // Lijnen: bij elke verversing bijwerken (dikte volgt het vermogen)
+  const lijnen = $("flow-lijnen");
+  lijnen.textContent = "";
+  for (const [a, b] of VERBINDINGEN) {
+    const heen = stromen[a + ">" + b] || 0, terug = stromen[b + ">" + a] || 0;
+    const w = Math.max(heen, terug);
+    const r = rand(NODES[a], NODES[b], 6);
+    const attrs = { class: "lijn", x1: r.x1, y1: r.y1, x2: r.x2, y2: r.y2 };
+    if (w >= DREMPEL) {
+      const bron = heen >= terug ? a : b;
+      attrs.class = "lijn actief";
+      attrs.stroke = NODES[bron].kleur;
+      attrs["stroke-width"] = (2 + Math.min(w / 1000, 3) * 1.5).toFixed(1);
+    }
+    lijnen.appendChild(svg("line", attrs));
+  }
+
+  // Stippen alleen opnieuw opbouwen als de richting of het aantal stromen verandert,
+  // anders springt de animatie bij elke verversing terug naar het begin.
+  if (sleutel === stroomSleutel) return;
+  stroomSleutel = sleutel;
+  const stippen = $("flow-stippen");
+  stippen.textContent = "";
+  if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  for (const [k] of actief) {
+    const [van, naar] = k.split(">");
+    const r = rand(NODES[van], NODES[naar], 4);
+    const pad = `M${r.x1.toFixed(1)},${r.y1.toFixed(1)} L${r.x2.toFixed(1)},${r.y2.toFixed(1)}`;
+    for (let i = 0; i < 3; i++) {
+      // opacity 0 als basis: zo staat de stip niet linksboven in beeld voordat zijn animatie begint
+      const stip = svg("circle", { r: 6.5 - i * 1.5, class: "stip", fill: NODES[van].kleur, "fill-opacity": 1 - i * 0.25, opacity: 0 });
+      stip.appendChild(svg("animateMotion", {
+        path: pad, dur: periode + "s", begin: (i * 0.12 * periode).toFixed(2) + "s",
+        repeatCount: "indefinite", keyPoints: "0;1", keyTimes: "0;1", calcMode: "linear", fill: "freeze",
+      }));
+      stip.appendChild(svg("animate", {
+        attributeName: "opacity", values: "0;1;1;0", keyTimes: "0;0.1;0.85;1",
+        dur: periode + "s", begin: (i * 0.12 * periode).toFixed(2) + "s", repeatCount: "indefinite",
+      }));
+      stippen.appendChild(stip);
+    }
+  }
 }
 
 function tekenStrip(strip) {
@@ -98,7 +178,7 @@ function tekenNu(d) {
     nb.hidden = true;
   }
   tekenStrip(d.strip || []);
-  if (d.vermogen) tekenStromen(d.vermogen);
+  if (d.vermogen) tekenStromen(d.vermogen, d.interval);
 
   const t = d.vandaag;
   $("t-kosten").textContent = euro(t.kosten);
@@ -178,7 +258,7 @@ function tekenPrijzen(d) {
   for (const b of d.blokken) {
     const rij = document.createElement("div");
     rij.className = "blok";
-    const bedrag = b.min === b.max ? euro(b.min) : euro(b.min) + "–" + fmtGetal(b.max, 2);
+    const bedrag = b.min === b.max ? euro(b.min) : euro(b.min) + "–" + fmtGetal(b.max, 3);
     rij.innerHTML = `<span class="stip ${b.level}"></span><span class="tijd">${b.van}–${b.tot}</span><span class="lvl">${NIVEAU[b.level]}</span><span class="bedrag">${bedrag}</span>`;
     box.appendChild(rij);
   }
