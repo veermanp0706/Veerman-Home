@@ -23,6 +23,8 @@ configuration:
     name: Grid costs (€/day, incl. VAT)
   vermindering_eb_dag:
     name: Energy tax reduction (€/day, incl. VAT)
+  accu_kwh:
+    name: Battery capacity (kWh)
   demo:
     name: Demo mode
 network:

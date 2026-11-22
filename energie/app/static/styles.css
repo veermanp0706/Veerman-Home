@@ -49,8 +49,18 @@ main { padding: 16px 20px 24px; display: flex; flex-direction: column; gap: 12px
 
 .segment { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; background: var(--oranje-diep); border-radius: 999px; padding: 4px; }
 .segment button { min-height: 40px; border: 0; border-radius: 999px; background: transparent; color: var(--inkt); font: 500 14px Inter, system-ui, sans-serif; cursor: pointer; }
+.segment.vier { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .segment button[aria-pressed="true"] { background: var(--inkt); color: var(--grond); font-weight: 600; }
-.segment button:focus-visible, .tabs button:focus-visible { outline: 3px solid var(--inkt); outline-offset: 2px; }
+button:focus { outline: none; }
+body.toetsenbord button:focus-visible { outline: 3px solid var(--inkt); outline-offset: 2px; }
+
+.rond { width: 44px; height: 44px; border: 0; border-radius: 50%; background: var(--grond); color: var(--inkt); display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
+.rond:disabled { opacity: 0.35; cursor: default; }
+.periode-titel { font-size: 15px; font-weight: 600; text-align: center; }
+.hero.mid { font-size: 40px; }
+.badge-licht { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; background: var(--grond); border-radius: 14px; padding: 8px 12px; }
+.badge-licht span { font-size: 11px; color: var(--stil); }
+.badge-licht b { font-family: var(--kop); font-size: 18px; font-weight: 600; }
 
 .tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .tile { background: var(--grond); border-radius: 16px; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; }
@@ -62,6 +72,10 @@ main { padding: 16px 20px 24px; display: flex; flex-direction: column; gap: 12px
 .card h2 { margin: 0; font-size: 13px; font-weight: 500; color: var(--stil); }
 .card.leeg { color: var(--stil); font-size: 14px; line-height: 1.45; }
 .grid4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; }
+.grid2 .stat b { font-size: 20px; }
+.stat small { display: block; font-size: 11px; font-weight: 500; color: var(--stil); font-family: Inter, system-ui, sans-serif; }
+.c-min { color: var(--duur-tekst) !important; }
 .stat { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .stat span { font-size: 11px; color: var(--stil); }
 .stat b { font-family: var(--kop); font-size: 17px; font-weight: 600; white-space: nowrap; }
@@ -126,7 +140,30 @@ main { padding: 16px 20px 24px; display: flex; flex-direction: column; gap: 12px
 .kv dd { margin: 0; text-align: right; }
 .note { margin: 0; font-size: 12px; color: var(--stil); }
 
+/* Historie */
+.c-net { color: var(--net-tekst); }
+.c-bg-zon { background: var(--zon); }
+.c-bg-net { background: var(--net); }
+.bars.gestapeld i { display: flex; flex-direction: column; justify-content: flex-end; border-radius: 3px 3px 0 0; overflow: hidden; min-height: 0; background: none; }
+.bars.gestapeld i b { display: block; width: 100%; }
+.bars.gestapeld i b.zon { background: var(--zon); }
+.bars.gestapeld i b.bat { background: var(--bat); }
+.bars.gestapeld i b.net { background: var(--net); }
+.axis.dicht { gap: 3px; justify-content: flex-start; }
+.axis.dicht span { flex: 1; text-align: center; white-space: nowrap; overflow: visible; min-width: 0; }
+.center { text-align: center; }
+
 /* Batterij */
+.curve { width: 100%; height: 96px; }
+.curve .grid { stroke: var(--rand); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.curve .grid.sterk { stroke: var(--rand-sterk); }
+.curve polyline { fill: none; stroke: var(--bat); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.curve circle { fill: var(--bat); stroke: var(--kaart); stroke-width: 2; }
+.status { font-size: 12px; font-weight: 500; color: var(--bat-tekst); }
+.status.mis { color: var(--duur-tekst); }
+.grid4.boven { padding-top: 10px; border-top: 1px solid var(--rand); margin-top: 4px; }
+.groot { font-family: var(--kop); font-size: 20px; font-weight: 600; }
+.blok.totaal { font-weight: 600; border-bottom: 0; }
 .soc { position: relative; height: 14px; border-radius: 999px; background: var(--oranje-zacht); overflow: hidden; }
 .soc i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--inkt); border-radius: 999px; width: 0; transition: width 0.3s ease; }
 

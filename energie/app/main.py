@@ -10,13 +10,14 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
 import calc
+import history
 from gateway import DemoGateway, Gateway
 from prices import PriceService
 from storage import Storage
 from tariffs import Tariffs
 from timeutil import TZ, hhmm, parse_day
 
-VERSION = "0.1.1"
+VERSION = "0.2.0"
 DATA_DIR = os.environ.get("DATA_DIR", "/data")
 OPTIONS_PATH = os.environ.get("OPTIONS_PATH", os.path.join(DATA_DIR, "options.json"))
 STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
@@ -110,6 +111,7 @@ class App:
         self.opts = load_options()
         self.demo = os.environ.get("DEMO") == "1" or bool(self.opts.get("demo"))
         self.tariffs = Tariffs(self.opts)
+        self.capacity = float(self.opts.get("accu_kwh", 5.0)) or 5.0
         self.store = Storage(os.path.join(DATA_DIR, "energie.db"))
         host = (self.opts.get("gateway_host") or "").strip()
         token = (self.opts.get("gateway_token") or "").strip()
@@ -182,6 +184,12 @@ class App:
             "verwacht_rond": "13:00" if not hours and day > today else None,
         }
 
+    def api_history(self, periode, day_value):
+        return history.period(self.store, self.tariffs, periode or "dag", parse_day(day_value), self.capacity)
+
+    def api_battery(self, day_value):
+        return history.battery(self.store, self.tariffs, parse_day(day_value), self.capacity)
+
     def api_status(self):
         return {
             "versie": VERSION,
@@ -220,6 +228,10 @@ def make_handler(app):
                     return self._json(app.api_now())
                 if path == "/api/prices":
                     return self._json(app.api_prices((q.get("dag") or [None])[0]))
+                if path == "/api/history":
+                    return self._json(app.api_history((q.get("periode") or ["dag"])[0], (q.get("datum") or [None])[0]))
+                if path == "/api/battery":
+                    return self._json(app.api_battery((q.get("datum") or [None])[0]))
                 if path == "/api/status":
                     return self._json(app.api_status())
             except ValueError as e:

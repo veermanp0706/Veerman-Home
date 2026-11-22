@@ -28,6 +28,9 @@ configuration:
     name: Netbeheerkosten (€/dag, incl. btw)
   vermindering_eb_dag:
     name: Vermindering energiebelasting (€/dag, incl. btw)
+  accu_kwh:
+    name: Batterijcapaciteit (kWh)
+    description: Bruikbare capaciteit, voor het aantal cycli en het verlies. IQ Battery 5P = 5,0.
   demo:
     name: Demomodus
     description: Toont nepgegevens, om de app te bekijken zonder gateway.

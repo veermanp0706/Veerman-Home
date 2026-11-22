@@ -1,5 +1,5 @@
 name: Enphase energie-app
-version: "0.1.1"
+version: "0.2.0"
 slug: veerman_enphase
 description: Snelle app voor je Enphase-zonnepanelen en -batterij, met Vattenfall-prijzen
 url: https://github.com/veermanp0706/Veerman-enphase
@@ -30,6 +30,7 @@ options:
   vaste_leveringskosten_dag: 0.196915
   netbeheer_dag: 1.309704
   vermindering_eb_dag: 1.723173
+  accu_kwh: 5.0
   demo: false
 schema:
   gateway_host: str
@@ -43,4 +44,5 @@ schema:
   vaste_leveringskosten_dag: float
   netbeheer_dag: float
   vermindering_eb_dag: float
+  accu_kwh: float
   demo: bool

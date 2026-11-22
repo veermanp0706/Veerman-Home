@@ -62,3 +62,53 @@ class Storage:
         with self._lock:
             cur = self._db.execute("SELECT ts, epex FROM price WHERE ts >= ? AND ts < ? ORDER BY ts", (start, end))
             return {r[0]: r[1] for r in cur.fetchall()}
+
+    def hourly(self, start, end):
+        """Energie per uur in wattminuut, uitgesplitst naar herkomst en bestemming."""
+        sql = """
+            SELECT ts - (ts % 3600) AS h,
+                   SUM(load), SUM(pv),
+                   SUM(MAX(grid, 0)), SUM(MAX(-grid, 0)),
+                   SUM(MAX(batt, 0)), SUM(MAX(-batt, 0)),
+                   SUM(MIN(pv, load)),
+                   SUM(MIN(MAX(batt, 0), MAX(load - MIN(pv, load), 0))),
+                   SUM(MIN(MAX(-batt, 0), MAX(pv - load, 0))),
+                   COUNT(*)
+            FROM minute WHERE ts >= ? AND ts < ?
+            GROUP BY h ORDER BY h
+        """
+        keys = ("load", "pv", "import", "export", "batt_out", "batt_in", "pv_house", "batt_house", "batt_in_pv", "minutes")
+        with self._lock:
+            rows = self._db.execute(sql, (start, end)).fetchall()
+        return {r[0]: dict(zip(keys, r[1:])) for r in rows}
+
+    def soc_series(self, start, end, step=600):
+        with self._lock:
+            cur = self._db.execute(
+                "SELECT ts - (ts % ?) AS t, AVG(soc) FROM minute WHERE ts >= ? AND ts < ? AND soc IS NOT NULL GROUP BY t ORDER BY t",
+                (step, start, end),
+            )
+            return [(r[0], r[1]) for r in cur.fetchall()]
+
+    def first_soc_at_least(self, start, end, level):
+        with self._lock:
+            r = self._db.execute(
+                "SELECT MIN(ts) FROM minute WHERE ts >= ? AND ts < ? AND soc >= ?", (start, end, level)
+            ).fetchone()
+            m = self._db.execute("SELECT MAX(soc) FROM minute WHERE ts >= ? AND ts < ?", (start, end)).fetchone()
+        return (r[0] if r else None), (m[0] if m else None)
+
+    def soc_edges(self, start, end):
+        with self._lock:
+            a = self._db.execute(
+                "SELECT soc FROM minute WHERE ts >= ? AND ts < ? AND soc IS NOT NULL ORDER BY ts LIMIT 1", (start, end)
+            ).fetchone()
+            b = self._db.execute(
+                "SELECT soc FROM minute WHERE ts >= ? AND ts < ? AND soc IS NOT NULL ORDER BY ts DESC LIMIT 1", (start, end)
+            ).fetchone()
+        return (a[0] if a else None), (b[0] if b else None)
+
+    def first_ts(self):
+        with self._lock:
+            r = self._db.execute("SELECT MIN(ts) FROM minute").fetchone()
+        return r[0] if r else None
