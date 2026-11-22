@@ -1,0 +1,31 @@
+configuration:
+  gateway_host:
+    name: Gateway IP address
+    description: For example 192.168.178.160. Reserve this address in your router.
+  gateway_token:
+    name: JWT token
+    description: Create it at entrez.enphaseenergy.com; valid for one year.
+  poll_interval:
+    name: Refresh every (seconds)
+  inkoopvergoeding:
+    name: Purchase fee (€/kWh, incl. VAT)
+  energiebelasting:
+    name: Energy tax (€/kWh, incl. VAT)
+  verkoopvergoeding:
+    name: Export fee (€/kWh, incl. VAT)
+  btw:
+    name: VAT (%)
+  saldering_tot:
+    name: Net metering until
+  vaste_leveringskosten_dag:
+    name: Fixed supply costs (€/day, incl. VAT)
+  netbeheer_dag:
+    name: Grid costs (€/day, incl. VAT)
+  vermindering_eb_dag:
+    name: Energy tax reduction (€/day, incl. VAT)
+  accu_kwh:
+    name: Battery capacity (kWh)
+  demo:
+    name: Demo mode
+network:
+  8099/tcp: Web app directly (only for access outside Home Assistant)
