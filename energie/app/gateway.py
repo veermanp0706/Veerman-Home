@@ -45,7 +45,7 @@ class Gateway:
             self._conn = http.client.HTTPSConnection(self.host, context=self._ctx, timeout=self.timeout)
         return self._conn
 
-    def _request(self, method, path, body=None):
+    def _request(self, method, path, body=None, raw_text=False):
         headers = {"Authorization": f"Bearer {self.token}", "Accept": "application/json"}
         data = None
         if body is not None:
@@ -62,6 +62,8 @@ class Gateway:
                         raise GatewayError("token geweigerd (401): maak een nieuw token aan")
                     if resp.status != 200:
                         raise GatewayError(f"{path} gaf status {resp.status}")
+                    if raw_text:
+                        return raw.decode("utf-8", "replace")
                     return json.loads(raw) if raw else None
                 except GatewayError:
                     raise
@@ -70,6 +72,13 @@ class Gateway:
                     if attempt == 2:
                         raise GatewayError(f"{path}: {e}") from e
         return None
+
+    def get_json(self, path):
+        """Alleen lezen: een JSON-endpoint van de gateway."""
+        return self._request("GET", path)
+
+    def get_text(self, path):
+        return self._request("GET", path, raw_text=True)
 
     def _close(self):
         try:

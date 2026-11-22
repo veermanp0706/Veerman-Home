@@ -1,5 +1,5 @@
 name: Enphase energie-app
-version: "0.3.4"
+version: "0.5.0"
 slug: veerman_enphase
 description: Snelle app voor je Enphase-zonnepanelen en -batterij, met Vattenfall-prijzen
 url: https://github.com/veermanp0706/Veerman-enphase

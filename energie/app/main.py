@@ -11,13 +11,15 @@ from urllib.parse import parse_qs, urlparse
 
 import calc
 import history
+import i18n
+import system
 from gateway import DemoGateway, Gateway
 from prices import PriceService
 from storage import Storage
 from tariffs import Tariffs
 from timeutil import TZ, hhmm, parse_day
 
-VERSION = "0.3.4"
+VERSION = "0.5.0"
 DATA_DIR = os.environ.get("DATA_DIR", "/data")
 OPTIONS_PATH = os.environ.get("OPTIONS_PATH", os.path.join(DATA_DIR, "options.json"))
 STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
@@ -30,6 +32,7 @@ STATIC = {
     "/": ("index.html", "text/html; charset=utf-8"),
     "/index.html": ("index.html", "text/html; charset=utf-8"),
     "/app.js": ("app.js", "text/javascript; charset=utf-8"),
+    "/i18n.js": ("i18n.js", "text/javascript; charset=utf-8"),
     "/styles.css": ("styles.css", "text/css; charset=utf-8"),
     "/manifest.json": ("manifest.json", "application/manifest+json"),
     "/icon.svg": ("icon.svg", "image/svg+xml"),
@@ -114,7 +117,9 @@ class App:
         self.demo = os.environ.get("DEMO") == "1" or bool(self.opts.get("demo"))
         self.tariffs = Tariffs(self.opts)
         self.capacity = float(self.opts.get("accu_kwh", 5.0)) or 5.0
-        self.store = Storage(os.path.join(DATA_DIR, "energie.db"))
+        self.store_path = os.path.join(DATA_DIR, "energie.db")
+        self.store = Storage(self.store_path)
+        self.version = VERSION
         host = (self.opts.get("gateway_host") or "").strip()
         token = (self.opts.get("gateway_token") or "").strip()
         if self.demo:
@@ -125,8 +130,11 @@ class App:
         else:
             gw = None
             log.error("vul gateway_host en gateway_token in bij de instellingen van de add-on")
+        self.gateway = gw
+        self.token = token
         self.collector = Collector(gw, self.store, self.opts.get("poll_interval", 5)) if gw else None
         self.prices = PriceService(self.store, demo=self.demo)
+        self.system = system.SystemStatus(self)
 
     def start(self):
         if self.collector:
@@ -221,15 +229,20 @@ def make_handler(app):
             url = urlparse(self.path)
             path = url.path
             q = parse_qs(url.query)
+            taal = (q.get("taal") or ["nl"])[0]
             try:
                 if path == "/api/now":
                     return self._json(app.api_now())
                 if path == "/api/prices":
                     return self._json(app.api_prices((q.get("dag") or [None])[0]))
                 if path == "/api/history":
-                    return self._json(app.api_history((q.get("periode") or ["dag"])[0], (q.get("datum") or [None])[0]))
+                    return self._json(i18n.translate(app.api_history((q.get("periode") or ["dag"])[0], (q.get("datum") or [None])[0]), taal))
                 if path == "/api/battery":
-                    return self._json(app.api_battery((q.get("datum") or [None])[0]))
+                    return self._json(i18n.translate(app.api_battery((q.get("datum") or [None])[0]), taal))
+                if path == "/api/system":
+                    return self._json(i18n.translate(app.system.get(force=(q.get("vernieuw") or ["0"])[0] == "1"), taal))
+                if path == "/api/system/raw":
+                    return self._json(app.system.raw())
                 if path == "/api/status":
                     return self._json(app.api_status())
             except ValueError as e:

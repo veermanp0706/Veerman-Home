@@ -1,5 +1,29 @@
 # Wijzigingen
 
+## 0.5.0
+
+- Nieuw liquid-glass-ontwerp: doorschijnende glaskaarten, glanzend oranje kop en een zwevend glazen menu.
+- Nieuw lettertype: Manrope.
+- Instellingenpagina via het tandwiel naast "Live" op Nu.
+- Weergave Licht, Donker of Automatisch (volgt je telefoon, ook bij zonsopgang en zonsondergang).
+- Taal Nederlands of English; alle teksten in beide talen.
+
+## 0.4.1
+
+- Historie: het blokje met de opbrengst van de batterij is weg; de stroomkosten staan nu gecentreerd.
+
+## 0.4.0
+
+- Nieuw scherm Status: werkt alles nog? Per onderdeel de stand van zaken, met bovenaan een samenvatting en eventuele aandachtspunten.
+  - Zonnepanelen en omvormers: per paneel het huidige vermogen, laatste melding, en of de omvormer communiceert.
+  - Batterij: status, laadtoestand, temperatuur, communicatie, slaapstand.
+  - Gateway: bereikbaarheid, wifi of ethernet en signaal, verbinding met de Enphase-cloud, opslag, firmware, en tot wanneer het token geldig is.
+  - Meters: of de meters voor productie, verbruik en batterij actief zijn.
+  - App: versie, prijzen binnen, database.
+- Een rode stip bij Status in het menu als er iets aandacht nodig heeft, ook als je op een ander scherm bent.
+- Menu met vijf knoppen: Prijzen, Historie, Nu (uitgelicht in het midden), Batterij, Status.
+- Waarschuwing als het token binnen 30 dagen verloopt.
+
 ## 0.3.4
 
 - iPhone-icoon: oranje zonnepaneel op een donkere achtergrond, zodat het oranje ook in de donkere stijl van het beginscherm zichtbaar blijft.

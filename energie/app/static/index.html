@@ -3,30 +3,47 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#FF7A1A">
+<meta name="theme-color" content="#FFF1E4">
+<meta name="color-scheme" content="light dark">
 <title>Energie</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="apple-mobile-web-app-title" content="Energie">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<script>
+  // Thema direct zetten, voordat de pagina getekend wordt (geen witte flits in donker)
+  (function () {
+    var keus = "auto";
+    try { keus = localStorage.getItem("thema") || "auto"; } catch (e) {}
+    var donker = keus === "donker" || (keus === "auto" && window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches);
+    document.documentElement.dataset.theme = donker ? "dark" : "light";
+  })();
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+<div class="achtergrond" aria-hidden="true"><i></i><i></i><i></i></div>
 <div class="app">
 
   <!-- NU -->
   <section class="screen" id="scherm-nu" aria-labelledby="titel-nu">
     <header class="band">
       <div class="row">
-        <h1 id="titel-nu">Nu</h1>
-        <div class="live" id="live"><span class="dot"></span><span id="live-tekst">Verbinden…</span></div>
+        <h1 id="titel-nu" data-t="nu.titel">Nu</h1>
+        <div class="row klein">
+          <div class="live" id="live"><span class="dot"></span><span id="live-tekst" data-t="live.verbinden">Verbinden…</span></div>
+          <button type="button" class="rond glas" id="naar-instellingen" data-t-aria="inst.titel" aria-label="Instellingen">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          </button>
+        </div>
       </div>
       <div class="row end">
         <div class="stack">
-          <span class="sub">Stroom kost nu</span>
+          <span class="sub" data-t="nu.kost">Stroom kost nu</span>
           <span class="hero" id="prijs-nu">–<small> /kWh</small></span>
         </div>
         <span class="chip" id="niveau-nu">–</span>
@@ -37,26 +54,21 @@
       </div>
     </header>
     <main>
-      <section class="card" aria-label="Prijs per uur vandaag">
-        <h2>Vandaag per uur</h2>
+      <section class="card" data-t-aria="nu.peruur_aria" aria-label="Prijs per uur vandaag">
+        <h2 data-t="nu.peruur">Vandaag per uur</h2>
         <div class="strip" id="strip" aria-hidden="true"></div>
         <div class="axis"><span>00</span><span>06</span><span>12</span><span>18</span><span>23</span></div>
       </section>
 
-      <section class="card" aria-label="Energiestromen">
-        <h2>Energiestromen</h2>
+      <section class="card" data-t-aria="nu.stromen" aria-label="Energiestromen">
+        <h2 data-t="nu.stromen">Energiestromen</h2>
         <svg class="flow" viewBox="0 0 340 372" role="img" id="flow" aria-label="Energiestromen">
-          <defs>
-            <marker id="m-zon" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L10 5L0 10z" fill="#E8A200"/></marker>
-            <marker id="m-bat" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L10 5L0 10z" fill="#18946B"/></marker>
-            <marker id="m-net" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L10 5L0 10z" fill="#4A6CF0"/></marker>
-          </defs>
           <g id="flow-lijnen"></g>
           <g id="flow-stippen"></g>
           <g class="node zon">
             <circle cx="170" cy="56" r="46"/>
             <text x="170" y="56" class="waarde" id="w-zon">–</text>
-            <text x="170" y="76" class="naam">Zon</text>
+            <text x="170" y="76" class="naam" data-t="node.zon">Zon</text>
           </g>
           <g class="node bat">
             <circle cx="56" cy="196" r="46"/>
@@ -70,20 +82,69 @@
           </g>
           <g class="node huis">
             <circle cx="170" cy="308" r="56"/>
+            <ellipse cx="170" cy="276" rx="36" ry="14" class="glans"/>
             <text x="170" y="309" class="waarde" id="w-huis">–</text>
-            <text x="170" y="331" class="naam">Huis</text>
+            <text x="170" y="331" class="naam" data-t="node.huis">Huis</text>
           </g>
         </svg>
-        <p class="note center" id="flow-uitleg"></p>
       </section>
 
-      <section class="card grid2" aria-label="Vandaag">
-        <div class="stat"><span>Kosten vandaag</span><b id="t-kosten">–</b></div>
-        <div class="stat"><span>Verbruik</span><b id="t-verbruik">–</b></div>
-        <div class="stat"><span>Zon</span><b class="c-zon" id="t-zon">–</b></div>
-        <div class="stat"><span>Batterij</span><b class="c-bat" id="t-bat">–</b></div>
+      <section class="card grid2" data-t-aria="nu.vandaag" aria-label="Vandaag">
+        <div class="stat"><span data-t="stat.kosten_vandaag">Kosten vandaag</span><b id="t-kosten">–</b></div>
+        <div class="stat"><span data-t="stat.verbruik">Verbruik</span><b id="t-verbruik">–</b></div>
+        <div class="stat"><span data-t="node.zon">Zon</span><b class="c-zon" id="t-zon">–</b></div>
+        <div class="stat"><span data-t="node.batterij">Batterij</span><b class="c-bat" id="t-bat">–</b></div>
       </section>
       <p class="foot" id="fout-nu" hidden></p>
+    </main>
+  </section>
+
+  <!-- INSTELLINGEN -->
+  <section class="screen" id="scherm-instellingen" aria-labelledby="titel-inst" hidden>
+    <div class="kopregel">
+      <button type="button" class="rond glas" id="terug-nu" data-t-aria="inst.terug" aria-label="Terug naar Nu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+      </button>
+      <h1 id="titel-inst" data-t="inst.titel">Instellingen</h1>
+    </div>
+    <main>
+      <h2 class="sectie" id="kop-weergave" data-t="inst.weergave">Weergave</h2>
+      <section class="card" role="radiogroup" aria-labelledby="kop-weergave">
+        <div class="themas">
+          <button type="button" role="radio" class="thema" data-thema="licht" aria-checked="false">
+            <span class="mini licht" aria-hidden="true"><i></i><i></i><i></i></span>
+            <span class="naam" data-t="inst.licht">Licht</span><span class="vink" aria-hidden="true"></span>
+          </button>
+          <button type="button" role="radio" class="thema" data-thema="donker" aria-checked="false">
+            <span class="mini donker" aria-hidden="true"><i></i><i></i><i></i></span>
+            <span class="naam" data-t="inst.donker">Donker</span><span class="vink" aria-hidden="true"></span>
+          </button>
+          <button type="button" role="radio" class="thema" data-thema="auto" aria-checked="false">
+            <span class="mini auto" aria-hidden="true"><span class="mini licht"><i></i><i></i></span><span class="mini donker"><i></i><i></i></span></span>
+            <span class="naam" data-t="inst.auto">Automatisch</span><span class="vink" aria-hidden="true"></span>
+          </button>
+        </div>
+        <p class="note" id="thema-uitleg"></p>
+      </section>
+
+      <h2 class="sectie" id="kop-taal" data-t="inst.taal">Taal</h2>
+      <section class="card list" role="radiogroup" aria-labelledby="kop-taal">
+        <button type="button" role="radio" class="keuze" data-taal="nl" aria-checked="false" lang="nl">
+          <span class="stack"><b>Nederlands</b><small>Alle teksten in het Nederlands</small></span><span class="vinkje" aria-hidden="true"></span>
+        </button>
+        <button type="button" role="radio" class="keuze" data-taal="en" aria-checked="false" lang="en">
+          <span class="stack"><b>English</b><small>All texts in English</small></span><span class="vinkje" aria-hidden="true"></span>
+        </button>
+      </section>
+
+      <h2 class="sectie" data-t="inst.over">Over de app</h2>
+      <section class="card">
+        <dl class="kv groot-kv">
+          <dt data-t="rij.versie">Versie</dt><dd id="i-versie">–</dd>
+          <dt>Gateway</dt><dd id="i-gateway">–</dd>
+        </dl>
+      </section>
+      <p class="note pad-l" data-t="inst.bewaard">Deze instellingen worden op dit apparaat bewaard.</p>
     </main>
   </section>
 
@@ -91,40 +152,40 @@
   <section class="screen" id="scherm-prijzen" aria-labelledby="titel-prijzen" hidden>
     <header class="band">
       <div class="stack">
-        <h1 id="titel-prijzen">Prijzen</h1>
-        <span class="sub" id="prijs-datum">all-in per kWh</span>
+        <h1 id="titel-prijzen" data-t="tab.prijzen">Prijzen</h1>
+        <span class="sub" id="prijs-datum" data-t="prijs.allin">all-in per kWh</span>
       </div>
-      <div class="segment" role="group" aria-label="Dag kiezen">
-        <button type="button" data-dag="vandaag" aria-pressed="true">Vandaag</button>
-        <button type="button" data-dag="morgen" aria-pressed="false">Morgen</button>
+      <div class="segment" role="group" data-t-aria="prijs.dagkiezen" aria-label="Dag kiezen">
+        <button type="button" data-dag="vandaag" aria-pressed="true" data-t="prijs.vandaag">Vandaag</button>
+        <button type="button" data-dag="morgen" aria-pressed="false" data-t="prijs.morgen">Morgen</button>
       </div>
       <div class="tiles">
-        <div class="tile"><span>Goedkoopst</span><b class="c-goed" id="p-laag">–</b><span id="p-laag-uur"></span></div>
-        <div class="tile"><span>Gemiddeld</span><b id="p-gem">–</b><span>hele dag</span></div>
-        <div class="tile"><span>Duurst</span><b class="c-duur" id="p-hoog">–</b><span id="p-hoog-uur"></span></div>
+        <div class="tile"><span data-t="prijs.goedkoopst">Goedkoopst</span><b class="c-goed" id="p-laag">–</b><span id="p-laag-uur"></span></div>
+        <div class="tile"><span data-t="prijs.gemiddeld">Gemiddeld</span><b id="p-gem">–</b><span data-t="prijs.heledag">hele dag</span></div>
+        <div class="tile"><span data-t="prijs.duurst">Duurst</span><b class="c-duur" id="p-hoog">–</b><span id="p-hoog-uur"></span></div>
       </div>
     </header>
     <main>
       <p class="card leeg" id="p-leeg" hidden></p>
-      <section class="card" id="p-grafiek" aria-label="Prijs per uur">
+      <section class="card" id="p-grafiek" data-t-aria="prijs.peruur" aria-label="Prijs per uur">
         <div class="chart">
           <div class="yaxis" aria-hidden="true"><span id="y-max"></span><span id="y-mid"></span><span id="y-min"></span></div>
           <div class="bars" id="bars" role="img"></div>
         </div>
         <div class="axis pad"><span>00</span><span>06</span><span>12</span><span>18</span><span>23</span></div>
         <div class="legend pad">
-          <span><i class="sw goedkoop"></i>Goedkoop</span><span><i class="sw normaal"></i>Normaal</span><span><i class="sw duur"></i>Duur</span>
+          <span><i class="sw goedkoop"></i><span data-t="niveau.goedkoop">Goedkoop</span></span><span><i class="sw normaal"></i><span data-t="niveau.normaal">Normaal</span></span><span><i class="sw duur"></i><span data-t="niveau.duur">Duur</span></span>
         </div>
       </section>
-      <section class="card list" id="blokken" aria-label="Blokken"></section>
-      <section class="card" id="opbouw" aria-label="Opbouw van de prijs" hidden>
+      <section class="card list" id="blokken" data-t-aria="prijs.blokken" aria-label="Blokken"></section>
+      <section class="card" id="opbouw" data-t-aria="prijs.opbouw_aria" aria-label="Opbouw van de prijs" hidden>
         <h2 id="opbouw-titel">Opbouw nu</h2>
         <div class="bar-split" aria-hidden="true"><i id="o1"></i><i id="o2"></i><i id="o3"></i></div>
         <dl class="kv">
-          <dt>Beursprijs</dt><dd id="o-beurs"></dd>
-          <dt>Inkoopvergoeding</dt><dd id="o-inkoop"></dd>
-          <dt>Energiebelasting</dt><dd id="o-eb"></dd>
-          <dt><b>Totaal</b></dt><dd><b id="o-totaal"></b></dd>
+          <dt data-t="prijs.beurs">Beursprijs</dt><dd id="o-beurs"></dd>
+          <dt data-t="prijs.inkoop">Inkoopvergoeding</dt><dd id="o-inkoop"></dd>
+          <dt data-t="prijs.eb">Energiebelasting</dt><dd id="o-eb"></dd>
+          <dt><b data-t="prijs.totaal">Totaal</b></dt><dd><b id="o-totaal"></b></dd>
         </dl>
         <p class="note" id="o-terug"></p>
       </section>
@@ -134,46 +195,40 @@
   <!-- HISTORIE -->
   <section class="screen" id="scherm-historie" aria-labelledby="titel-historie" hidden>
     <header class="band">
-      <h1 id="titel-historie">Historie</h1>
-      <div class="segment vier" role="group" aria-label="Periode kiezen">
-        <button type="button" data-periode="dag" aria-pressed="true">Dag</button>
-        <button type="button" data-periode="week" aria-pressed="false">Week</button>
-        <button type="button" data-periode="maand" aria-pressed="false">Maand</button>
-        <button type="button" data-periode="jaar" aria-pressed="false">Jaar</button>
+      <h1 id="titel-historie" data-t="tab.historie">Historie</h1>
+      <div class="segment vier" role="group" data-t-aria="hist.periodekiezen" aria-label="Periode kiezen">
+        <button type="button" data-periode="dag" aria-pressed="true" data-t="hist.dag">Dag</button>
+        <button type="button" data-periode="week" aria-pressed="false" data-t="hist.week">Week</button>
+        <button type="button" data-periode="maand" aria-pressed="false" data-t="hist.maand">Maand</button>
+        <button type="button" data-periode="jaar" aria-pressed="false" data-t="hist.jaar">Jaar</button>
       </div>
       <div class="row">
-        <button type="button" class="rond" id="h-vorige" aria-label="Vorige periode"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></button>
+        <button type="button" class="rond" id="h-vorige" data-t-aria="hist.vorige" aria-label="Vorige periode"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></button>
         <span class="periode-titel" id="h-titel">–</span>
-        <button type="button" class="rond" id="h-volgende" aria-label="Volgende periode"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></button>
+        <button type="button" class="rond" id="h-volgende" data-t-aria="hist.volgende" aria-label="Volgende periode"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></button>
       </div>
-      <div class="row end">
-        <div class="stack">
-          <span class="sub" id="h-kosten-label">Stroomkosten</span>
-          <span class="hero mid" id="h-kosten">–</span>
-          <span class="sub" id="h-vergelijk"></span>
-        </div>
-        <div class="badge-licht">
-          <span>Batterij leverde op</span>
-          <b class="c-bat" id="h-bat">–</b>
-        </div>
+      <div class="stack midden-uitgelijnd">
+        <span class="sub" id="h-kosten-label">Stroomkosten</span>
+        <span class="hero mid" id="h-kosten">–</span>
+        <span class="sub" id="h-vergelijk"></span>
       </div>
     </header>
     <main>
-      <section class="card grid2" aria-label="Totalen">
-        <div class="stat"><span>Verbruik</span><b id="h-verbruik">–</b></div>
-        <div class="stat"><span>Opgewekt</span><b class="c-zon" id="h-opgewekt">–</b></div>
-        <div class="stat"><span>Afgenomen</span><b class="c-net" id="h-afname">–</b></div>
-        <div class="stat"><span>Terug</span><b id="h-terug">–</b></div>
+      <section class="card grid2" data-t-aria="hist.totalen" aria-label="Totalen">
+        <div class="stat"><span data-t="stat.verbruik">Verbruik</span><b id="h-verbruik">–</b></div>
+        <div class="stat"><span data-t="stat.opgewekt">Opgewekt</span><b class="c-zon" id="h-opgewekt">–</b></div>
+        <div class="stat"><span data-t="stat.afgenomen">Afgenomen</span><b class="c-net" id="h-afname">–</b></div>
+        <div class="stat"><span data-t="stat.terug">Terug</span><b id="h-terug">–</b></div>
       </section>
-      <section class="card" aria-label="Herkomst van je stroom">
-        <h2>Waar je stroom vandaan kwam</h2>
+      <section class="card" data-t-aria="hist.herkomst" aria-label="Herkomst van je stroom">
+        <h2 data-t="hist.herkomst">Waar je stroom vandaan kwam</h2>
         <div class="chart">
           <div class="yaxis" aria-hidden="true"><span id="hy-max"></span><span id="hy-mid"></span><span>0</span></div>
           <div class="bars gestapeld" id="h-bars" role="img"></div>
         </div>
         <div class="axis pad" id="h-as"></div>
         <div class="legend pad">
-          <span><i class="sw c-bg-zon"></i>Zon</span><span><i class="sw goedkoop"></i>Batterij</span><span><i class="sw c-bg-net"></i>Net</span>
+          <span><i class="sw c-bg-zon"></i><span data-t="node.zon">Zon</span></span><span><i class="sw goedkoop"></i><span data-t="node.batterij">Batterij</span></span><span><i class="sw c-bg-net"></i><span data-t="node.net">Net</span></span>
         </div>
         <p class="note" id="h-laadnoot"></p>
       </section>
@@ -184,7 +239,7 @@
   <!-- BATTERIJ -->
   <section class="screen" id="scherm-batterij" aria-labelledby="titel-batterij" hidden>
     <header class="band">
-      <h1 id="titel-batterij">Batterij</h1>
+      <h1 id="titel-batterij" data-t="tab.batterij">Batterij</h1>
       <div class="row end">
         <span class="hero" id="b-soc">–</span>
         <span class="sub right" id="b-vermogen"></span>
@@ -192,9 +247,9 @@
       <div class="soc" role="img" id="b-balk" aria-label="Laadtoestand"><i id="b-vul"></i></div>
     </header>
     <main>
-      <section class="card" aria-label="Laadtoestand vandaag">
+      <section class="card" data-t-aria="bat.vandaag_aria" aria-label="Laadtoestand vandaag">
         <div class="row">
-          <h2>Vandaag</h2>
+          <h2 data-t="prijs.vandaag">Vandaag</h2>
           <span class="status" id="b-nacht"></span>
         </div>
         <svg class="curve" viewBox="0 0 316 96" preserveAspectRatio="none" role="img" id="b-curve" aria-label="Laadtoestand vandaag">
@@ -206,41 +261,90 @@
         </svg>
         <div class="axis"><span>00</span><span>06</span><span>12</span><span>18</span><span>24</span></div>
         <div class="grid2 boven">
-          <div class="stat"><span>Geladen</span><b id="b-in">–</b></div>
-          <div class="stat"><span>Ontladen</span><b id="b-uit">–</b></div>
-          <div class="stat"><span>Cycli</span><b id="b-cycli">–</b></div>
-          <div class="stat"><span>Opbrengst</span><b class="c-bat" id="b-op-vandaag">–</b></div>
+          <div class="stat"><span data-t="bat.geladen">Geladen</span><b id="b-in">–</b></div>
+          <div class="stat"><span data-t="bat.ontladen">Ontladen</span><b id="b-uit">–</b></div>
+          <div class="stat"><span data-t="bat.cycli">Cycli</span><b id="b-cycli">–</b></div>
+          <div class="stat"><span data-t="bat.opbrengst">Opbrengst</span><b class="c-bat" id="b-op-vandaag">–</b></div>
         </div>
       </section>
 
-      <section class="card" aria-label="Gisteren">
+      <section class="card" data-t-aria="bat.gisteren" aria-label="Gisteren">
         <div class="row">
-          <h2>Gisteren</h2>
+          <h2 data-t="bat.gisteren">Gisteren</h2>
           <b class="c-bat groot" id="g-op">–</b>
         </div>
         <div class="grid2">
-          <div class="stat"><span>Geladen</span><b id="g-in">–</b></div>
-          <div class="stat"><span>Ontladen</span><b id="g-uit">–</b></div>
-          <div class="stat"><span>Verlies</span><b id="g-verlies">–</b></div>
-          <div class="stat"><span>Cycli</span><b id="g-cycli">–</b></div>
+          <div class="stat"><span data-t="bat.geladen">Geladen</span><b id="g-in">–</b></div>
+          <div class="stat"><span data-t="bat.ontladen">Ontladen</span><b id="g-uit">–</b></div>
+          <div class="stat"><span data-t="bat.verlies">Verlies</span><b id="g-verlies">–</b></div>
+          <div class="stat"><span data-t="bat.cycli">Cycli</span><b id="g-cycli">–</b></div>
         </div>
         <p class="note" id="g-uitleg"></p>
       </section>
 
-      <section class="card list" aria-label="Afgelopen dagen" id="b-dagen-kaart">
+      <section class="card list" data-t-aria="bat.dagen" aria-label="Afgelopen dagen" id="b-dagen-kaart">
         <div id="b-dagen"></div>
-        <div class="blok totaal"><span class="tijd">Samen</span><span class="bedrag c-bat" id="b-samen">–</span></div>
+        <div class="blok totaal"><span class="tijd" data-t="bat.samen">Samen</span><span class="bedrag c-bat" id="b-samen">–</span></div>
       </section>
     </main>
   </section>
 
-  <nav class="tabs" aria-label="Hoofdmenu">
-    <button type="button" data-tab="nu" aria-current="page"><span class="pill"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg></span>Nu</button>
-    <button type="button" data-tab="prijzen"><span class="pill"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></span>Prijzen</button>
-    <button type="button" data-tab="historie"><span class="pill"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></span>Historie</button>
-    <button type="button" data-tab="batterij"><span class="pill"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="7" width="17" height="10" rx="2"/><path d="M22 11v2"/><path d="M6 10v4M10 10v4"/></svg></span>Batterij</button>
+  <!-- STATUS -->
+  <section class="screen" id="scherm-status" aria-labelledby="titel-status" hidden>
+    <header class="band">
+      <div class="row">
+        <h1 id="titel-status" data-t="tab.status">Status</h1>
+        <button type="button" class="rond" id="s-vernieuw" data-t-aria="status.opnieuw" aria-label="Opnieuw controleren"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg></button>
+      </div>
+      <div class="samenvatting" id="s-samenvatting">
+        <span class="s-icoon" id="s-icoon" aria-hidden="true"></span>
+        <div class="stack">
+          <b id="s-kop" data-t="status.controleren">Controleren…</b>
+          <span class="sub" id="s-tijd"></span>
+        </div>
+      </div>
+    </header>
+    <main>
+      <section class="card list" id="s-meldingen" data-t-aria="status.aandacht" aria-label="Aandachtspunten" hidden></section>
+
+      <section class="card" data-t-aria="status.omvormers" aria-label="Omvormers">
+        <div class="row"><h2 data-t="status.panelen">Zonnepanelen en omvormers</h2><span class="badge" id="s-omv-badge"></span></div>
+        <div class="panelen" id="s-panelen"></div>
+        <p class="note" id="s-omv-noot"></p>
+      </section>
+
+      <section class="card" data-t-aria="node.batterij" aria-label="Batterij">
+        <div class="row"><h2 data-t="node.batterij">Batterij</h2><span class="badge" id="s-bat-badge"></span></div>
+        <dl class="kv" id="s-bat"></dl>
+      </section>
+
+      <section class="card" aria-label="Gateway">
+        <div class="row"><h2>Gateway</h2><span class="badge" id="s-gw-badge"></span></div>
+        <dl class="kv" id="s-gw"></dl>
+      </section>
+
+      <section class="card" data-t-aria="status.meters" aria-label="Meters">
+        <div class="row"><h2 data-t="status.meters">Meters</h2><span class="badge" id="s-met-badge"></span></div>
+        <dl class="kv" id="s-met"></dl>
+      </section>
+
+      <section class="card" aria-label="App">
+        <h2>App</h2>
+        <dl class="kv" id="s-app"></dl>
+        <a class="note link" href="api/system/raw" target="_blank" rel="noopener" data-t="status.ruw">Ruwe gegevens van de gateway bekijken</a>
+      </section>
+    </main>
+  </section>
+
+  <nav class="tabs" data-t-aria="tab.menu" aria-label="Hoofdmenu">
+    <button type="button" data-tab="prijzen"><span class="pill"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></span><span data-t="tab.prijzen">Prijzen</span></button>
+    <button type="button" data-tab="historie"><span class="pill"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></span><span data-t="tab.historie">Historie</span></button>
+    <button type="button" data-tab="nu" class="midden" aria-current="page"><span class="pill"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg></span><span data-t="nu.titel">Nu</span></button>
+    <button type="button" data-tab="batterij"><span class="pill"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="7" width="17" height="10" rx="2"/><path d="M22 11v2"/><path d="M6 10v4M10 10v4"/></svg></span><span data-t="tab.batterij">Batterij</span></button>
+    <button type="button" data-tab="status"><span class="pill"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg><i class="stip-melding" id="tab-melding" hidden></i></span><span data-t="tab.status">Status</span></button>
   </nav>
 </div>
+<script src="i18n.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
