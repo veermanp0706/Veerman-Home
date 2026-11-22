@@ -16,7 +16,7 @@ from storage import Storage
 from tariffs import Tariffs
 from timeutil import TZ, hhmm, parse_day
 
-VERSION = "0.1.0"
+VERSION = "0.1.1"
 DATA_DIR = os.environ.get("DATA_DIR", "/data")
 OPTIONS_PATH = os.environ.get("OPTIONS_PATH", os.path.join(DATA_DIR, "options.json"))
 STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
