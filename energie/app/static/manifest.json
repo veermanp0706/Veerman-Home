@@ -1,0 +1,14 @@
+{
+  "name": "Energie",
+  "short_name": "Energie",
+  "description": "Zonnepanelen, batterij en stroomprijzen in één oogopslag",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#FFF6EE",
+  "theme_color": "#FF7A1A",
+  "lang": "nl",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
