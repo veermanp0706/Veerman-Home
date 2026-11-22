@@ -25,6 +25,9 @@ configuration:
     name: Energy tax reduction (€/day, incl. VAT)
   accu_kwh:
     name: Battery capacity (kWh)
+  historie_uit_ha:
+    name: Fill history from Home Assistant
+    description: Imports hourly totals from the Energy dashboard or the Enphase integration for periods the app did not measure itself.
   demo:
     name: Demo mode
 network:

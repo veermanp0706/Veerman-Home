@@ -10,6 +10,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
 import calc
+import ha_import
 import history
 import i18n
 import system
@@ -19,7 +20,7 @@ from storage import Storage
 from tariffs import Tariffs
 from timeutil import TZ, hhmm, parse_day
 
-VERSION = "0.5.0"
+VERSION = "0.5.1"
 DATA_DIR = os.environ.get("DATA_DIR", "/data")
 OPTIONS_PATH = os.environ.get("OPTIONS_PATH", os.path.join(DATA_DIR, "options.json"))
 STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
@@ -135,11 +136,17 @@ class App:
         self.collector = Collector(gw, self.store, self.opts.get("poll_interval", 5)) if gw else None
         self.prices = PriceService(self.store, demo=self.demo)
         self.system = system.SystemStatus(self)
+        ha_token = os.environ.get("SUPERVISOR_TOKEN")
+        self.importer = None
+        if ha_token and not self.demo and self.opts.get("historie_uit_ha", True):
+            self.importer = ha_import.Importer(self.store, self.prices, ha_token)
 
     def start(self):
         if self.collector:
             self.collector.start()
         self.prices.start()
+        if self.importer:
+            self.importer.start()
 
     # --- API ---------------------------------------------------------------
 

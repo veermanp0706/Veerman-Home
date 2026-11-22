@@ -141,6 +141,8 @@ const TEKSTEN = {
     "status.geen_omv": "Geen omvormers gevonden.",
     "status.omv_noot": "{actief} van {aantal} omvormers in orde · samen {watt}. Omvormers melden zich ongeveer elke 5 minuten; 's nachts slapen ze.",
     "status.niet_opgehaald": "Niet opgehaald: {fout}",
+    "status.slaapt": "slaapt",
+    "status.omv_slapen": "De {aantal} omvormers slapen nu, omdat er geen zonlicht is. Dat is normaal; bij daglicht worden ze weer wakker.",
     "status.meters": "Meters",
     "status.ruw": "Ruwe gegevens van de gateway bekijken",
     "status.geen_gegevens": "Geen gegevens",
@@ -181,6 +183,11 @@ const TEKSTEN = {
     "rij.nog_niet": "Nog niet (rond 13:00)",
     "rij.metingen_sinds": "Metingen sinds",
     "rij.database": "Database",
+    "rij.ha": "Historie uit Home Assistant",
+    "rij.ha_sinds": "Sinds {datum}",
+    "rij.ha_bezig": "bezig met ophalen…",
+    "rij.ha_wacht": "Start zo",
+    "rij.ha_fout": "Mislukt: {fout}",
   },
 
   en: {
@@ -322,6 +329,8 @@ const TEKSTEN = {
     "status.geen_omv": "No inverters found.",
     "status.omv_noot": "{actief} of {aantal} inverters OK · together {watt}. Inverters report about every 5 minutes; at night they sleep.",
     "status.niet_opgehaald": "Not retrieved: {fout}",
+    "status.slaapt": "asleep",
+    "status.omv_slapen": "The {aantal} inverters are asleep because there is no sunlight. That is normal; they wake up again in daylight.",
     "status.meters": "Meters",
     "status.ruw": "View raw gateway data",
     "status.geen_gegevens": "No data",
@@ -362,6 +371,11 @@ const TEKSTEN = {
     "rij.nog_niet": "Not yet (around 13:00)",
     "rij.metingen_sinds": "Measuring since",
     "rij.database": "Database",
+    "rij.ha": "History from Home Assistant",
+    "rij.ha_sinds": "Since {datum}",
+    "rij.ha_bezig": "retrieving…",
+    "rij.ha_wacht": "Starting soon",
+    "rij.ha_fout": "Failed: {fout}",
   },
 };
 

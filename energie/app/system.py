@@ -214,20 +214,34 @@ class SystemStatus:
         devs = _devices(raw.get("inventory"), "PCU")
         serials = [str(d.get("serial_num")) for d in devs if d.get("serial_num")] or list(prod)
         by_serial = {str(d.get("serial_num")): d for d in devs}
+
+        def laatste(sn):
+            p, d = prod.get(sn, {}), by_serial.get(sn, {})
+            return p.get("lastReportDate") or (int(d["last_rpt_date"]) if str(d.get("last_rpt_date", "")).isdigit() else None)
+
+        # Omvormers werken alleen als er licht is; zonder licht gaan ze slapen en
+        # meldt de gateway 'communiceert niet'. Dat is dan geen storing.
+        # Ze zijn 'wakker' als minstens de helft het afgelopen half uur iets meldde;
+        # zo geeft de schemering (de een wordt eerder wakker dan de ander) geen alarm.
+        recent = sum(1 for sn in serials if isinstance(laatste(sn), (int, float)) and now - laatste(sn) < 1800)
+        wakker = bool(serials) and recent * 2 >= len(serials)
         lijst = []
         for i, sn in enumerate(sorted(serials), start=1):
             d = by_serial.get(sn, {})
             p = prod.get(sn, {})
             ok, codes = _status_ok(d)
-            last = p.get("lastReportDate") or (int(d["last_rpt_date"]) if str(d.get("last_rpt_date", "")).isdigit() else None)
+            last = laatste(sn)
+            stil = not isinstance(last, (int, float)) or now - last > 3600
             status = OK
             reden = None
-            if d.get("communicating") is False:
-                status, reden = FOUT, "communiceert niet"
-            elif ok is False:
-                status, reden = FOUT, ", ".join(c.replace("envoy.", "") for c in codes)
-            elif isinstance(last, (int, float)) and now - last > 26 * 3600:
+            if isinstance(last, (int, float)) and now - last > 26 * 3600:
                 status, reden = LET_OP, "al meer dan een dag geen melding"
+            elif not wakker:
+                pass  # nacht of donker: slapen is normaal
+            elif d.get("communicating") is False and stil:
+                status, reden = FOUT, "communiceert niet"
+            elif ok is False and stil:
+                status, reden = FOUT, ", ".join(c.replace("envoy.", "") for c in codes)
             if status != OK:
                 melding(status, "Omvormers", f"Omvormer {i} ({_kort(sn)}): {reden}.")
             lijst.append({
@@ -239,6 +253,7 @@ class SystemStatus:
                 "produceert": d.get("producing"),
                 "status": status,
                 "reden": reden,
+                "slaapt": not wakker and status == OK,
             })
         if not lijst and "inverters" in errors and "inventory" in errors:
             melding(LET_OP, "Omvormers", "De status van de omvormers kon niet worden opgehaald.")
@@ -248,6 +263,7 @@ class SystemStatus:
             "aantal": len(lijst),
             "actief": actief,
             "totaal_watt": totaal_w,
+            "slapen": not wakker and bool(lijst),
             "lijst": lijst,
             "status": FOUT if any(x["status"] == FOUT for x in lijst) else LET_OP if any(x["status"] == LET_OP for x in lijst) else (OK if lijst else ONBEKEND),
             "ophaalfout": errors.get("inverters") or errors.get("inventory"),
@@ -339,6 +355,7 @@ class SystemStatus:
             "prijzen_fout": app.prices.last_error,
             "database_mb": db_mb,
             "metingen_sinds": _dt(first).strftime("%d-%m-%Y") if first else None,
+            "ha_historie": app.importer.info() if getattr(app, "importer", None) else None,
         }
 
 
@@ -353,6 +370,7 @@ def demo_raw():
         {"serial_num": f"12210{i:07d}", "device_status": ["envoy.global.ok"], "communicating": True,
          "producing": dag, "operating": True, "last_rpt_date": str(now - 300)} for i in range(1, 10)]}]
     inventory[0]["devices"][6]["communicating"] = False  # een storing om de weergave te testen
+    inverters[6]["lastReportDate"] = now - 7200 if dag else inverters[6]["lastReportDate"]
     return {
         "info": "<envoy_info><device><sn>122312345678</sn><pn>800-00654-r09</pn><software>D8.3.5289</software></device></envoy_info>",
         "home": {"db_percent_full": 12, "update_status": "satisfied", "alerts": [],

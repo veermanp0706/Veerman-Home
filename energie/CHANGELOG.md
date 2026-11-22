@@ -1,5 +1,10 @@
 # Wijzigingen
 
+## 0.5.1
+
+- Historie aanvullen uit Home Assistant: de app haalt uurtotalen op uit het Energie-dashboard (of de Enphase-integratie) voor de periode van vóór de app, inclusief de prijzen van die dagen. Te zien op Status onder App.
+- Omvormers die 's nachts slapen geven geen storing meer. Een storing komt alleen nog als een omvormer overdag langer dan een uur niets meldt terwijl de rest wel werkt.
+
 ## 0.5.0
 
 - Nieuw liquid-glass-ontwerp: doorschijnende glaskaarten, glanzend oranje kop en een zwevend glazen menu.

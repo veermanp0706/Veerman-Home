@@ -31,6 +31,9 @@ configuration:
   accu_kwh:
     name: Batterijcapaciteit (kWh)
     description: Bruikbare capaciteit, voor het aantal cycli en het verlies. IQ Battery 5P = 5,0.
+  historie_uit_ha:
+    name: Historie aanvullen uit Home Assistant
+    description: Haalt uurtotalen uit het Energie-dashboard of de Enphase-integratie voor periodes die de app zelf niet heeft gemeten.
   demo:
     name: Demomodus
     description: Toont nepgegevens, om de app te bekijken zonder gateway.

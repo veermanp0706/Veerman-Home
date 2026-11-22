@@ -24,3 +24,12 @@ Een snelle app voor je Enphase-zonnepanelen en -batterij, met de echte all-in st
 - **"token geweigerd"**: het token is verlopen. Maak een nieuw token aan en vul het in.
 - **Geen prijzen**: EnergyZero is tijdelijk niet bereikbaar. De app probeert het elke 5 minuten opnieuw.
 - **Status bekijken**: open in de web-app het adres `api/status`.
+
+## Historie uit Home Assistant
+
+Staat **Historie aanvullen uit Home Assistant** aan (standaard), dan haalt de app
+uurtotalen op uit het Energie-dashboard van Home Assistant: zon, afname, teruglevering
+en batterij. Is het Energie-dashboard niet ingesteld, dan zoekt de app de sensoren van
+de Enphase-integratie. Dit vult alleen de uren aan die de app zelf niet heeft gemeten,
+en wordt elke 6 uur bijgewerkt. De kosten van die periode worden berekend met de
+huidige tarieven uit de instellingen.

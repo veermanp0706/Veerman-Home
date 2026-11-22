@@ -558,14 +558,16 @@ function tekenStatus(d) {
   badge("s-omv-badge", o.status);
   const maxW = Math.max(370, ...o.lijst.map((p) => p.max_watt || 0));
   $("s-panelen").innerHTML = o.lijst
-    .map((p) => `<div class="paneel ${p.status}" title="${esc(t("status.omvormer", { serie: p.serie }))}">
+    .map((p) => `<div class="paneel ${p.status}${p.slaapt ? " slaapt" : ""}" title="${esc(t("status.omvormer", { serie: p.serie }))}">
         <div class="kop"><span>${esc(t("status.paneel", { nr: p.nr }))}</span><span class="dot"></span></div>
         <b>${p.watt == null ? "–" : watt(p.watt)}</b>
         <div class="meter"><i style="width:${p.watt ? Math.min(100, (p.watt / maxW) * 100) : 0}%"></i></div>
-        ${p.reden ? `<span class="reden">${esc(p.reden)}</span>` : `<span class="note">${esc(p.laatste || "")}</span>`}
+        ${p.reden ? `<span class="reden">${esc(p.reden)}</span>` : `<span class="note">${esc(p.slaapt ? t("status.slaapt") : (p.laatste || ""))}</span>`}
       </div>`)
     .join("") || `<p class="note">${esc(t("status.geen_omv"))}</p>`;
-  $("s-omv-noot").textContent = o.aantal
+  $("s-omv-noot").textContent = o.aantal && o.slapen
+    ? t("status.omv_slapen", { aantal: o.aantal })
+    : o.aantal
     ? t("status.omv_noot", { actief: o.actief, aantal: o.aantal, watt: watt(o.totaal_watt) })
     : o.ophaalfout ? t("status.niet_opgehaald", { fout: o.ophaalfout }) : "";
 
@@ -614,11 +616,19 @@ function tekenStatus(d) {
     [t("rij.prijzen_morgen"), t(a.prijzen_morgen ? "rij.binnen" : "rij.nog_niet")],
     [t("rij.metingen_sinds"), a.metingen_sinds],
     [t("rij.database"), a.database_mb != null ? fmtGetal(a.database_mb, 1) + " MB" : null],
+    ...haRijen(a.ha_historie),
   ]);
 
   // Instellingen: over de app
   $("i-versie").textContent = a.versie || "–";
   $("i-gateway").textContent = g.firmware || "–";
+}
+
+function haRijen(h) {
+  if (!h) return [];
+  if (h.status === "fout") return [[t("rij.ha"), t("rij.ha_fout", { fout: h.fout || "" }), "let_op"]];
+  if (h.sinds) return [[t("rij.ha"), t("rij.ha_sinds", { datum: h.sinds }) + (h.status === "bezig" ? " · " + t("rij.ha_bezig") : ""), "ok"]];
+  return [[t("rij.ha"), t(h.status === "bezig" ? "rij.ha_bezig" : "rij.ha_wacht")]];
 }
 
 async function verversStatus(vernieuw = false) {

@@ -65,7 +65,7 @@ class PriceService(threading.Thread):
         start, end = day_bounds(day)
         return len(self.store.prices(start, end)) >= (end - start) // 3600
 
-    def ensure(self, day):
+    def ensure(self, day, log_level=logging.WARNING):
         if self.complete(day):
             return True
         try:
@@ -73,15 +73,18 @@ class PriceService(threading.Thread):
             source = "EnergyZero"
         except Exception as e:
             if not self.demo:
-                self.last_error = f"{day}: {e}"
-                log.warning("prijzen voor %s niet opgehaald: %s", day, e)
+                if log_level >= logging.WARNING:
+                    self.last_error = f"{day}: {e}"
+                log.log(log_level, "prijzen voor %s niet opgehaald: %s", day, e)
                 return False
             items, source = demo_prices(day), "demo"
         if items:
             self.store.set_prices(items, source, int(time.time()))
             self.last_fetch = time.time()
-            self.last_error = None
-            log.info("%d prijzen opgeslagen voor %s (%s)", len(items), day, source)
+            if log_level >= logging.WARNING:
+                self.last_error = None
+            log.log(logging.INFO if log_level >= logging.WARNING else logging.DEBUG,
+                    "%d prijzen opgeslagen voor %s (%s)", len(items), day, source)
         return self.complete(day)
 
     def run(self):

@@ -301,6 +301,7 @@ body.toetsenbord button:focus-visible { outline: 3px solid var(--oranje); outlin
 .paneel .meter { height: 5px; border-radius: 999px; background: var(--lijn); overflow: hidden; }
 .paneel .meter i { display: block; height: 100%; background: var(--zon); border-radius: 999px; }
 .paneel .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--bat); }
+.paneel.slaapt .dot { background: var(--normaal); }
 .paneel.let_op { border-color: var(--zon); }
 .paneel.let_op .dot { background: var(--zon); }
 .paneel.fout { border-color: var(--duur); background: var(--fout-bg); }
