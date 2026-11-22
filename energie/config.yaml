@@ -1,5 +1,5 @@
 name: Enphase energie-app
-version: "0.3.1"
+version: "0.3.2"
 slug: veerman_enphase
 description: Snelle app voor je Enphase-zonnepanelen en -batterij, met Vattenfall-prijzen
 url: https://github.com/veermanp0706/Veerman-enphase
@@ -11,10 +11,10 @@ init: false
 startup: application
 boot: auto
 ingress: true
-panel_admin: false
 ingress_port: 8099
 panel_icon: mdi:solar-power-variant
 panel_title: Energie
+panel_admin: false
 ports:
   8099/tcp: null
 ports_description:

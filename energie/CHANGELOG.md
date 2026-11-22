@@ -1,8 +1,13 @@
 # Wijzigingen
 
+## 0.3.2
+
+- Nieuw app-icoon: het zonnepaneel uit de zijbalk (solar-power-variant), zwart op oranje. Ook als PNG, zodat de iPhone het gebruikt bij "Zet op beginscherm".
+- Icoon en logo in de App Store van Home Assistant.
+
 ## 0.3.1
 
-- panel_admin: false
+- Het paneel Energie is ook te openen voor gebruikers die geen beheerder zijn (`panel_admin: false`).
 
 ## 0.3.0
 

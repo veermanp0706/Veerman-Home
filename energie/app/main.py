@@ -17,7 +17,7 @@ from storage import Storage
 from tariffs import Tariffs
 from timeutil import TZ, hhmm, parse_day
 
-VERSION = "0.3.0"
+VERSION = "0.3.2"
 DATA_DIR = os.environ.get("DATA_DIR", "/data")
 OPTIONS_PATH = os.environ.get("OPTIONS_PATH", os.path.join(DATA_DIR, "options.json"))
 STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
@@ -33,6 +33,8 @@ STATIC = {
     "/styles.css": ("styles.css", "text/css; charset=utf-8"),
     "/manifest.json": ("manifest.json", "application/manifest+json"),
     "/icon.svg": ("icon.svg", "image/svg+xml"),
+    "/apple-touch-icon.png": ("apple-touch-icon.png", "image/png"),
+    "/icon-512.png": ("icon-512.png", "image/png"),
 }
 
 
