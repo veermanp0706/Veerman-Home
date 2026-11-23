@@ -1,5 +1,13 @@
 # Wijzigingen
 
+## 0.8.0
+
+- Adviseur voor het nachtladen: elke middag, zodra de prijzen van morgen bekend zijn, rekent de app uit wanneer en tot hoever je de batterij vannacht het beste van het net laadt. De app stuurt zelf niets aan; je stelt het in de Enphase-app in.
+- Zonverwachting via Open-Meteo voor jouw dak (richting en hellingshoek), elke dag bijgesteld aan de werkelijke opbrengst.
+- Verwacht verbruik per uur op basis van je eigen metingen.
+- Adviesblok op Nu, een pagina met het hele advies en een stappenplan, en "Hoe goed is het advies?" (achteraf doorgerekend t.o.v. je vaste schema).
+- Instellingen: je huidige laadschema en je dak. Melding om 15:00 als het advies afwijkt van je schema.
+
 ## 0.7.0
 
 - Nieuwe pagina Systeem (was Batterij): opbrengst van vandaag per zonnepaneel, met een waarschuwing als een paneel duidelijk achterblijft, daaronder de batterij, en "Over je panelen" met totalen, records en temperatuur.

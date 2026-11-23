@@ -54,6 +54,16 @@
       </div>
     </header>
     <main>
+      <button type="button" class="card adviesblok" id="advies-blok" hidden>
+        <div class="row"><h2 data-t="adv.vannacht">Advies voor vannacht</h2><span class="note" id="adv-blok-status"></span></div>
+        <div class="adv-regel">
+          <span class="adv-icoon" aria-hidden="true"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="17" height="10" rx="2"/><path d="M22 11v2"/><path d="M11 9l-2 3h4l-2 3"/></svg></span>
+          <span class="stack"><b id="adv-blok-kop">–</b><span class="note" id="adv-blok-sub"></span></span>
+        </div>
+        <div class="adv-vergelijk" id="adv-blok-schema"></div>
+        <span class="adv-link" data-t="adv.bekijk">Bekijk het hele advies ›</span>
+      </button>
+
       <section class="card" data-t-aria="nu.stromen" aria-label="Energiestromen">
         <h2 data-t="nu.stromen">Energiestromen</h2>
         <svg class="flow" viewBox="0 0 340 372" role="img" id="flow" aria-label="Energiestromen">
@@ -131,6 +141,16 @@
         </button>
       </section>
 
+      <h2 class="sectie" id="kop-advies" data-t="adv.titel">Advies</h2>
+      <section class="card list" aria-labelledby="kop-advies" id="adv-inst">
+        <div class="keuze rij"><span class="stack"><b data-t="adv.mijn_schema">Mijn laadschema nu</b><small data-t="adv.schema_uitleg">Zoals het in de Enphase-app staat</small></span>
+          <span class="invoer"><select id="ai-start" aria-label="Start"></select>–<select id="ai-eind" aria-label="Eind"></select><select id="ai-limiet" aria-label="Opladen tot"></select></span></div>
+        <div class="keuze rij"><span class="stack"><b data-t="adv.vermogen">Vermogen panelen</b><small>kWp</small></span><input id="ai-kwp" type="number" step="0.01" min="0.1" max="50" inputmode="decimal"></div>
+        <div class="keuze rij"><span class="stack"><b data-t="adv.richting">Richting dak</b><small data-t="adv.richting_uitleg">Graden: 180 = zuid, 270 = west</small></span><input id="ai-azimut" type="number" step="1" min="0" max="359" inputmode="numeric"></div>
+        <div class="keuze rij"><span class="stack"><b data-t="adv.helling">Hellingshoek</b><small data-t="adv.helling_uitleg">Graden: 0 = plat</small></span><input id="ai-helling" type="number" step="1" min="0" max="90" inputmode="numeric"></div>
+        <p class="note pad-y" data-t="adv.bron">De zonverwachting komt van Open-Meteo (gratis, zonder account), voor de locatie uit Home Assistant. De app stelt hem elke dag bij aan wat je panelen echt opwekten.</p>
+      </section>
+
       <h2 class="sectie" id="kop-meldingen" data-t="inst.meldingen">Meldingen</h2>
       <section class="card list" aria-labelledby="kop-meldingen" id="meldingen">
         <p class="note pad-y" id="m-niet" hidden></p>
@@ -138,6 +158,7 @@
           <span class="stack"><b data-t="inst.stuur_naar">Stuur naar</b><small data-t="inst.stuur_uitleg">Telefoon met de Home Assistant-app</small></span>
           <select id="m-doel"></select>
         </label>
+        <label class="keuze rij"><span class="stack"><b data-t="inst.m_advies">Advies voor vannacht</b><small data-t="inst.m_advies_uitleg">Om 15:00, alleen als het advies afwijkt van je schema</small></span><input type="checkbox" class="schakel" data-melding="advies"></label>
         <label class="keuze rij"><span class="stack"><b data-t="inst.m_negatief">Negatieve of zeer lage prijs</b><small data-t="inst.m_negatief_uitleg">Een dag vooruit, zodra de prijzen bekend zijn</small></span><input type="checkbox" class="schakel" data-melding="negatief"></label>
         <label class="keuze rij"><span class="stack"><b data-t="inst.m_morgen">Goedkoopste moment morgen</b><small data-t="inst.m_morgen_uitleg">Elke middag om 14:00 het beste blok van 2 uur</small></span><input type="checkbox" class="schakel" data-melding="morgen"></label>
         <label class="keuze rij"><span class="stack"><b data-t="inst.m_nietvol">Batterij niet vol</b><small data-t="inst.m_nietvol_uitleg">'s Ochtends, als het nachtladen niet tot 100% kwam</small></span><input type="checkbox" class="schakel" data-melding="nietvol"></label>
@@ -154,6 +175,58 @@
         </dl>
       </section>
       <p class="note pad-l" data-t="inst.bewaard">Weergave en taal worden op dit apparaat bewaard.</p>
+    </main>
+  </section>
+
+  <!-- ADVIES -->
+  <section class="screen" id="scherm-advies" aria-labelledby="titel-advies" hidden>
+    <div class="kopregel">
+      <button type="button" class="rond glas" id="terug-advies" data-t-aria="inst.terug" aria-label="Terug naar Nu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+      </button>
+      <h1 id="titel-advies" data-t="adv.titel">Advies</h1>
+    </div>
+    <header class="band band-los">
+      <span class="sub" id="a-nacht"></span>
+      <b class="adv-hero" id="a-kop">–</b>
+      <div class="tiles">
+        <div class="tile"><span data-t="adv.laden">Laden</span><b id="a-kwh">–</b></div>
+        <div class="tile"><span data-t="adv.gem_prijs">Gem. prijs</span><b id="a-prijs">–</b></div>
+        <div class="tile"><span data-t="adv.vs_schema">vs. je schema</span><b id="a-besparing">–</b></div>
+      </div>
+    </header>
+    <main>
+      <p class="card leeg" id="a-leeg" hidden></p>
+      <section class="card" id="a-grafiek" data-t-aria="adv.morgen" aria-label="Morgen">
+        <h2 data-t="adv.zon_verbruik">Morgen: zon en verbruik</h2>
+        <svg class="adv-chart" id="a-uren" viewBox="0 0 316 110" preserveAspectRatio="none" role="img"></svg>
+        <div class="axis"><span>00</span><span>06</span><span>12</span><span>18</span><span>23</span></div>
+        <div class="legend wrap"><span><i class="sw c-bg-zon"></i><span id="a-leg-zon"></span></span><span><i class="sw c-bg-verbruik"></i><span id="a-leg-verbruik"></span></span><span><i class="sw c-bg-laden"></i><span data-t="adv.laadblok">Laden</span></span></div>
+        <h2 data-t="adv.prijs_morgen">Prijs morgen</h2>
+        <svg class="adv-chart kort" id="a-prijzen" viewBox="0 0 316 64" preserveAspectRatio="none" aria-hidden="true"></svg>
+      </section>
+      <section class="card list" id="a-waarom" data-t-aria="adv.waarom" aria-label="Waarom">
+        <h2 class="pad-top" data-t="adv.waarom">Waarom dit advies</h2>
+        <dl class="kv groot-kv" id="a-rijen"></dl>
+        <p class="note pad-y" id="a-uitleg"></p>
+      </section>
+      <section class="card" id="a-stappen" data-t-aria="adv.instellen" aria-label="Instellen">
+        <h2 data-t="adv.instellen">Zo stel je het in de Enphase-app in</h2>
+        <ol class="stappen" id="a-stappenlijst"></ol>
+        <div class="knoppen">
+          <button type="button" class="knop vol" id="a-gedaan" data-t="adv.gedaan">Ik heb het ingesteld</button>
+          <button type="button" class="knop" id="a-niet" data-t="adv.laat">Laat maar</button>
+        </div>
+        <p class="note" id="a-status"></p>
+      </section>
+      <section class="card" data-t-aria="adv.hoe_goed" aria-label="Hoe goed is het advies">
+        <h2 data-t="adv.hoe_goed">Hoe goed is het advies?</h2>
+        <div class="grid2">
+          <div class="stat"><span data-t="adv.bespaard_maand">Deze maand bespaard</span><b class="c-bat" id="a-ev-euro">–</b><small data-t="adv.tov_schema">t.o.v. je vaste schema</small></div>
+          <div class="stat"><span data-t="adv.zonverwachting">Zonverwachting</span><b id="a-ev-zon">–</b><small data-t="adv.afwijking">gemiddelde afwijking</small></div>
+        </div>
+        <p class="note" data-t="adv.ev_uitleg">De app rekent elke afgelopen dag opnieuw door met wat er echt gebeurde, en vergelijkt het advies met je vaste schema. De zonverwachting wordt bijgesteld aan de werkelijke opbrengst van je panelen.</p>
+      </section>
     </main>
   </section>
 

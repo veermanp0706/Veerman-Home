@@ -73,6 +73,7 @@ document.querySelectorAll("[data-taal]").forEach((b) =>
     try { localStorage.setItem("taal", TAAL); } catch (e) { /* geen opslag */ }
     pasTaalToe();
     stroomSleutel = "";
+    tekenAdviesBlok();
     verversNu();
     verversStatus();
   })
@@ -750,6 +751,175 @@ async function verversStatus(vernieuw = false) {
 }
 $("s-vernieuw").addEventListener("click", () => verversStatus(true));
 
+/* ---------- Advies ---------- */
+
+let advies = null;
+let adviesT = 0;
+const uurT = (h) => String(((h % 24) + 24) % 24).padStart(2, "0") + ":00";
+const euro2 = (v) => (v == null ? "–" : (v < 0 ? "−€" : "€") + fmtGetal(Math.abs(v), 2));
+
+function adviesKop(p) {
+  const a = p.advies;
+  return a ? t("adv.kop_laden", { van: uurT(a.start), tot: uurT(a.eind), limiet: a.limiet }) : t("adv.kop_niet");
+}
+
+function nachtLabel(p) {
+  const d = new Date(p.dag + "T12:00:00");
+  const v = new Date(d.getTime() - 86400000);
+  const f = (x) => x.toLocaleDateString(locale(), { weekday: "long" });
+  return t("adv.nacht", { van: f(v), tot: f(d) });
+}
+
+function schemaTekst(sc) {
+  return sc.limiet ? `${uurT(sc.start)} – ${uurT(sc.eind)} (${sc.limiet}%)` : t("adv.geen_schema");
+}
+
+async function laadAdvies(vernieuw = false) {
+  if (!vernieuw && advies && Date.now() - adviesT < 5 * 60 * 1000) return advies;
+  try { advies = await haal("api/advies" + (vernieuw ? "?vernieuw=1" : "")); adviesT = Date.now(); } catch (e) { /* later opnieuw */ }
+  return advies;
+}
+
+async function tekenAdviesBlok() {
+  const d = await laadAdvies();
+  const blok = $("advies-blok");
+  const p = d && d.plan;
+  if (!p) { blok.hidden = true; return; }
+  blok.hidden = false;
+  if (p.status !== "ok") {
+    $("adv-blok-kop").textContent = t("adv.volgt");
+    $("adv-blok-sub").textContent = t("adv.volgt_uitleg");
+    $("adv-blok-schema").hidden = true;
+    $("adv-blok-status").textContent = "";
+    return;
+  }
+  $("adv-blok-kop").textContent = adviesKop(p);
+  $("adv-blok-sub").textContent = t(p.zon_kwh < 3 ? "adv.weinig_zon" : "adv.zon_verwacht", { kwh: fmtGetal(p.zon_kwh, 1) });
+  const v = $("adv-blok-schema");
+  v.hidden = false;
+  v.innerHTML = `<span>${esc(t("adv.schema_nu"))} <b>${esc(schemaTekst(p.schema))}</b></span>` +
+    (p.gelijk_aan_schema ? `<span class="c-bat">${esc(t("adv.gelijk"))}</span>`
+      : p.besparing_vs_schema > 0.005 ? `<span class="c-bat">${esc(t("adv.scheelt", { euro: euro2(p.besparing_vs_schema) }))}</span>` : "");
+  $("adv-blok-status").textContent = p.ingesteld ? "✓ " + t("adv.is_ingesteld") : "";
+}
+
+function tekenAdvies() {
+  const d = advies;
+  const p = d && d.plan;
+  const ok = p && p.status === "ok";
+  $("a-leeg").hidden = ok;
+  $("a-leeg").textContent = d && d.fout ? t("adv.fout", { fout: d.fout }) : t("adv.volgt_uitleg");
+  for (const id of ["a-grafiek", "a-waarom", "a-stappen"]) $(id).hidden = !ok;
+  $("a-kop").textContent = ok ? adviesKop(p) : t("adv.volgt");
+  $("a-nacht").textContent = p ? nachtLabel(p) : "";
+  if (!ok) { $("a-kwh").textContent = $("a-prijs").textContent = $("a-besparing").textContent = "–"; tekenEvaluatie(); return; }
+  const a = p.advies;
+  $("a-kwh").textContent = a ? fmtGetal(a.laden_kwh, 1) + " kWh" : "0 kWh";
+  $("a-prijs").textContent = a ? euro(a.gem_prijs) : "–";
+  $("a-besparing").textContent = p.gelijk_aan_schema ? t("adv.gelijk_kort") : euro2(p.besparing_vs_schema);
+
+  // Grafiek: zon en verbruik per uur, laadblok gemarkeerd
+  const W = 316, H = 110, n = p.uren.length || 24, bw = W / n;
+  const max = Math.max(0.5, ...p.uren.map((u) => Math.max(u.zon, u.verbruik))) * 1.1;
+  const g = $("a-uren");
+  g.textContent = "";
+  p.uren.forEach((u, i) => {
+    if (u.laden) g.appendChild(svg("rect", { x: i * bw, y: 0, width: bw, height: H, class: "laadvlak" }));
+  });
+  p.uren.forEach((u, i) => {
+    const hv = (u.verbruik / max) * H, hz = (u.zon / max) * H;
+    g.appendChild(svg("rect", { x: (i * bw + 1).toFixed(1), y: (H - hv).toFixed(1), width: (bw - 2).toFixed(1), height: hv.toFixed(1), class: "r-verbruik" }));
+    if (hz > 0.3) g.appendChild(svg("rect", { x: (i * bw + bw * 0.25).toFixed(1), y: (H - hz).toFixed(1), width: (bw * 0.5).toFixed(1), height: hz.toFixed(1), class: "r-zon" }));
+  });
+  g.appendChild(svg("line", { x1: 0, x2: W, y1: H, y2: H, class: "as" }));
+  g.setAttribute("aria-label", t("adv.grafiek_aria", { zon: kwh(p.zon_kwh, 1), verbruik: kwh(p.verbruik_kwh, 1) }));
+  $("a-leg-zon").textContent = t("adv.leg_zon", { kwh: fmtGetal(p.zon_kwh, 1) }) + (p.zon_bekend ? "" : " *");
+  $("a-leg-verbruik").textContent = t("adv.leg_verbruik", { kwh: fmtGetal(p.verbruik_kwh, 1) });
+
+  const pr = $("a-prijzen");
+  pr.textContent = "";
+  const vals = p.uren.map((u) => u.allin);
+  const lo = Math.min(...vals), hi = Math.max(...vals) + 0.0001;
+  p.uren.forEach((u, i) => { if (u.laden) pr.appendChild(svg("rect", { x: i * bw, y: 0, width: bw, height: 64, class: "laadvlak" })); });
+  pr.appendChild(svg("polyline", { points: p.uren.map((u, i) => `${(i * bw + bw / 2).toFixed(1)},${(60 - ((u.allin - lo) / (hi - lo)) * 54).toFixed(1)}`).join(" "), class: "prijslijn" }));
+
+  // Waarom
+  const rij = (k, v, cls = "") => `<dt>${esc(k)}</dt><dd class="${cls}">${esc(v)}</dd>`;
+  $("a-rijen").innerHTML =
+    rij(t("adv.r_begin"), p.soc_begin_nacht + "%") +
+    rij(t("adv.r_zon"), kwh(p.zon_kwh, 1)) +
+    rij(t("adv.r_verbruik"), kwh(p.verbruik_kwh, 1)) +
+    (a ? rij(t("adv.r_laden"), t("adv.r_laden_v", { kwh: fmtGetal(a.laden_kwh, 1), prijs: euro(a.gem_prijs) })) : "") +
+    (p.gebruik_prijs ? rij(t("adv.r_gebruik"), euro(p.gebruik_prijs) + " /kWh", "ok") : "") +
+    rij(t("adv.r_niets"), euro2(p.besparing_vs_niets)) +
+    rij(t("adv.r_schema"), p.gelijk_aan_schema ? t("adv.gelijk_kort") : euro2(p.besparing_vs_schema));
+  $("a-uitleg").textContent = !a ? t("adv.uitleg_niet")
+    : a.limiet < 100 ? t("adv.uitleg_deels", { limiet: a.limiet }) : t("adv.uitleg_vol");
+
+  // Stappen
+  const st = a
+    ? [t("adv.stap1"), t("adv.stap2", { van: uurT(a.start), tot: uurT(a.eind) }), t("adv.stap3", { limiet: a.limiet })]
+    : [t("adv.stap1"), t("adv.stap_niet")];
+  $("a-stappenlijst").innerHTML = st.map((x) => `<li><span>${x}</span></li>`).join("");
+  $("a-gedaan").disabled = p.gelijk_aan_schema;
+  $("a-status").textContent = p.gelijk_aan_schema ? t("adv.al_goed") : p.ingesteld ? "✓ " + t("adv.is_ingesteld") : "";
+  tekenEvaluatie();
+}
+
+function tekenEvaluatie() {
+  const e = advies && advies.evaluatie;
+  $("a-ev-euro").textContent = e && e.besparing_maand != null ? euro2(e.besparing_maand) : "–";
+  $("a-ev-zon").textContent = e && e.zon_afwijking != null ? "± " + e.zon_afwijking + "%" : "–";
+}
+
+async function ingesteld(gedaan) {
+  const p = advies && advies.plan;
+  if (!p) return;
+  try {
+    const r = await fetch("api/advies/ingesteld", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ dag: p.dag, gedaan }) });
+    if (r.ok) { advies = await r.json(); adviesT = Date.now(); }
+  } catch (e) { /* later opnieuw */ }
+  tekenAdvies();
+  if (gedaan) vulAdviesInstellingen();
+}
+
+$("advies-blok").addEventListener("click", () => toon("advies"));
+$("terug-advies").addEventListener("click", () => toon("nu"));
+$("a-gedaan").addEventListener("click", () => ingesteld(true));
+$("a-niet").addEventListener("click", () => { ingesteld(false); toon("nu"); });
+
+// Instellingen voor het advies
+function vulAdviesInstellingen() {
+  const c = advies && advies.instellingen;
+  const uren = Array.from({ length: 24 }, (_, h) => `<option value="${h}">${uurT(h)}</option>`).join("");
+  if (!$("ai-start").options.length) {
+    $("ai-start").innerHTML = uren;
+    $("ai-eind").innerHTML = uren;
+    $("ai-limiet").innerHTML = Array.from({ length: 21 }, (_, i) => `<option value="${i * 5}">${i * 5}%</option>`).join("");
+  }
+  if (!c) return;
+  $("ai-start").value = c.schema_start;
+  $("ai-eind").value = c.schema_eind;
+  $("ai-limiet").value = Math.round(c.schema_limiet / 5) * 5;
+  $("ai-kwp").value = c.kwp;
+  $("ai-azimut").value = c.azimut;
+  $("ai-helling").value = c.helling;
+}
+
+async function bewaarAdviesInstellingen() {
+  const body = {
+    schema_start: parseInt($("ai-start").value, 10), schema_eind: parseInt($("ai-eind").value, 10),
+    schema_limiet: parseInt($("ai-limiet").value, 10), kwp: parseFloat($("ai-kwp").value),
+    azimut: parseInt($("ai-azimut").value, 10), helling: parseInt($("ai-helling").value, 10),
+  };
+  for (const k of Object.keys(body)) if (!Number.isFinite(body[k])) delete body[k];
+  try {
+    const r = await fetch("api/advies/instellingen", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    if (r.ok) { advies = await r.json(); adviesT = Date.now(); }
+  } catch (e) { /* blijft zoals het was */ }
+}
+for (const id of ["ai-start", "ai-eind", "ai-limiet", "ai-kwp", "ai-azimut", "ai-helling"]) $(id).addEventListener("change", bewaarAdviesInstellingen);
+
 /* ---------- Meldingen ---------- */
 
 let meldingen = null;
@@ -804,7 +974,7 @@ function toon(naam) {
   tab = naam;
   for (const s of document.querySelectorAll(".screen")) s.hidden = s.id !== "scherm-" + naam;
   // Instellingen hoort bij Nu: het menu blijft Nu tonen
-  const actieveTab = naam === "instellingen" ? "nu" : naam;
+  const actieveTab = naam === "instellingen" || naam === "advies" ? "nu" : naam;
   for (const b of document.querySelectorAll(".tabs button")) {
     if (b.dataset.tab === actieveTab) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current");
   }
@@ -814,7 +984,9 @@ function toon(naam) {
   if (naam === "historie") verversHistorie();
   if (naam === "systeem") verversSysteem();
   if (naam === "status") verversStatus();
-  if (naam === "instellingen") { pasTaalToe(); if (!laatsteStatus) verversStatus(); laadMeldingen(); }
+  if (naam === "instellingen") { pasTaalToe(); if (!laatsteStatus) verversStatus(); laadMeldingen(); laadAdvies().then(vulAdviesInstellingen); }
+  if (naam === "advies") { tekenAdvies(); laadAdvies(true).then(tekenAdvies); }
+  if (naam === "nu") tekenAdviesBlok();
   if (TABS.includes(naam)) { try { localStorage.setItem("tab", naam); } catch (e) { /* geen opslag */ } }
 }
 

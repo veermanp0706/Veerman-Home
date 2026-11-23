@@ -15,7 +15,7 @@ from timeutil import TZ, day_bounds
 
 log = logging.getLogger("meldingen")
 
-STANDAARD = {"doel": None, "taal": "nl", "negatief": True, "morgen": False, "nietvol": True, "storing": True, "token": True}
+STANDAARD = {"doel": None, "taal": "nl", "advies": True, "negatief": True, "morgen": False, "nietvol": True, "storing": True, "token": True}
 LAGE_PRIJS = 0.05  # all-in per kWh; daaronder (of een negatieve beursprijs) volgt een melding
 
 TEKST = {
@@ -30,6 +30,9 @@ TEKST = {
         "storing_titel": "Storing in je energiesysteem",
         "token_titel": "Enphase-token verloopt bijna",
         "token": "Je token verloopt over {dagen} dagen. Maak een nieuw token aan op entrez.enphaseenergy.com.",
+        "advies_titel": "Advies voor vannacht",
+        "advies_laden": "Laad {van}–{tot} tot {limiet}% (nu: {schema}). Scheelt ongeveer €{euro}.",
+        "advies_niet": "Vannacht niet van het net laden (nu: {schema}). Scheelt ongeveer €{euro}.",
         "test_titel": "Testmelding",
         "test": "Meldingen van de Enphase energie-app werken.",
     },
@@ -44,6 +47,9 @@ TEKST = {
         "storing_titel": "Fault in your energy system",
         "token_titel": "Enphase token expires soon",
         "token": "Your token expires in {dagen} days. Create a new token at entrez.enphaseenergy.com.",
+        "advies_titel": "Advice for tonight",
+        "advies_laden": "Charge {van}–{tot} to {limiet}% (now: {schema}). Saves about €{euro}.",
+        "advies_niet": "Don't charge from the grid tonight (now: {schema}). Saves about €{euro}.",
         "test_titel": "Test notification",
         "test": "Notifications from the Enphase energy app work.",
     },
@@ -61,6 +67,21 @@ def beste_blok(uren, lengte):
         if beste is None or gem < beste[1]:
             beste = (blok[0][0], gem)
     return beste
+
+
+def ha_request(token, method, path, body=None):
+    """Een verzoek aan de REST-API van Home Assistant, via de Supervisor."""
+    c = http.client.HTTPConnection(os.environ.get("HA_API_HOST", "supervisor"), timeout=15)
+    try:
+        c.request(method, "/core/api" + path, body=json.dumps(body) if body is not None else None,
+                  headers={"Authorization": "Bearer " + token, "Content-Type": "application/json"})
+        r = c.getresponse()
+        data = r.read()
+        if r.status >= 300:
+            raise RuntimeError(f"Home Assistant gaf {r.status}")
+        return json.loads(data) if data else None
+    finally:
+        c.close()
 
 
 class Notifier(threading.Thread):
@@ -107,17 +128,7 @@ class Notifier(threading.Thread):
     # --- Home Assistant -------------------------------------------------------
 
     def _ha(self, method, path, body=None):
-        c = http.client.HTTPConnection(os.environ.get("HA_API_HOST", "supervisor"), timeout=15)
-        try:
-            c.request(method, "/core/api" + path, body=json.dumps(body) if body is not None else None,
-                      headers={"Authorization": "Bearer " + self.token, "Content-Type": "application/json"})
-            r = c.getresponse()
-            data = r.read()
-            if r.status >= 300:
-                raise RuntimeError(f"Home Assistant gaf {r.status}")
-            return json.loads(data) if data else None
-        finally:
-            c.close()
+        return ha_request(self.token, method, path, body)
 
     def doelen(self):
         """De telefoons waar Home Assistant meldingen naartoe kan sturen."""
@@ -149,6 +160,24 @@ class Notifier(threading.Thread):
         except Exception as e:
             log.warning("melding niet verstuurd: %s", e)
             return False
+
+    def advies(self, plan):
+        """Melding met het advies voor de komende nacht (eenmalig per nacht)."""
+        if not (self.cfg.get("doel") and self.cfg.get("advies")):
+            return
+        t = TEKST[self.cfg.get("taal", "nl")]
+        uur = lambda h: f"{h % 24:02d}:00"
+        sc = plan["schema"]
+        schema = f"{uur(sc['start'])}–{uur(sc['eind'])}, {sc['limiet']}%" if sc["limiet"] else "—"
+        euro = f"{max(plan['besparing_vs_schema'], 0):.2f}"
+        if self.cfg.get("taal", "nl") == "nl":
+            euro = euro.replace(".", ",")
+        a = plan["advies"]
+        tekst = (t["advies_laden"].format(van=uur(a["start"]), tot=uur(a["eind"]), limiet=a["limiet"], schema=schema, euro=euro)
+                 if a else t["advies_niet"].format(schema=schema, euro=euro))
+        sleutel = "advies:" + plan["dag"] + ":" + (f"{a['start']}-{a['eind']}-{a['limiet']}" if a else "niet")
+        if not any(k.startswith("advies:" + plan["dag"]) for k in self.verstuurd):
+            self._eenmalig(sleutel, t["advies_titel"], tekst)
 
     def test(self):
         t = TEKST[self.cfg.get("taal", "nl")]

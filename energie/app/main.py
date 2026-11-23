@@ -10,6 +10,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
 import calc
+import advisor
 import ha_import
 import notify
 import panels
@@ -22,7 +23,7 @@ from storage import Storage
 from tariffs import Tariffs
 from timeutil import TZ, hhmm, parse_day
 
-VERSION = "0.7.0"
+VERSION = "0.8.0"
 DATA_DIR = os.environ.get("DATA_DIR", "/data")
 OPTIONS_PATH = os.environ.get("OPTIONS_PATH", os.path.join(DATA_DIR, "options.json"))
 STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
@@ -170,6 +171,7 @@ class App:
         log.info("historie uit Home Assistant: %s", "aan" if self.importer else "uit (" + self.importer_uit + ")")
         self.panels = panels.PanelService(self) if gw else None
         self.notifier = notify.Notifier(self, None if self.demo else ha_token, DATA_DIR)
+        self.advisor = advisor.Advisor(self, None if self.demo else ha_token, DATA_DIR) if gw else None
 
     def start(self):
         if self.collector:
@@ -181,6 +183,8 @@ class App:
             self.panels.start()
         if self.notifier.token:
             self.notifier.start()
+        if self.advisor:
+            self.advisor.start()
 
     # --- API ---------------------------------------------------------------
 
@@ -305,6 +309,15 @@ def make_handler(app):
                     return self._json(app.api_systeem())
                 if path == "/api/meldingen":
                     return self._json(app.notifier.instellingen())
+                if path == "/api/advies":
+                    if not app.advisor:
+                        return self._json({"plan": None, "fout": "gateway niet ingesteld"})
+                    if (q.get("vernieuw") or ["0"])[0] == "1" or not app.advisor.plan:
+                        try:
+                            app.advisor.ververs()
+                        except Exception as e:
+                            app.advisor.fout = str(e)
+                    return self._json(app.advisor.api())
                 if path == "/api/system/raw":
                     return self._json(app.system.raw())
                 if path == "/api/status":
@@ -327,6 +340,10 @@ def make_handler(app):
                 body = json.loads(self.rfile.read(n) or b"{}") if n else {}
                 if path == "/api/meldingen":
                     return self._json(app.notifier.bewaar(body))
+                if path == "/api/advies/instellingen" and app.advisor:
+                    return self._json(app.advisor.bewaar_instellingen(body))
+                if path == "/api/advies/ingesteld" and app.advisor:
+                    return self._json(app.advisor.ingesteld(str(body.get("dag")), bool(body.get("gedaan"))))
                 if path == "/api/meldingen/test":
                     return self._json({"ok": app.notifier.test()})
             except ValueError as e:

@@ -448,3 +448,34 @@ body.toetsenbord button:focus-visible { outline: 3px solid var(--oranje); outlin
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 :root[data-theme="dark"] .tile .c-goed { color: #8BF0C8; }
 :root[data-theme="dark"] .tile .c-duur { color: #FFB8C4; }
+
+/* ===== 0.8: Advies ===== */
+.adviesblok { width: 100%; text-align: left; font: inherit; color: inherit; cursor: pointer; gap: 10px; }
+.adv-regel { display: flex; align-items: center; gap: 12px; }
+.adv-regel b { font-size: 19px; font-weight: 600; letter-spacing: -0.01em; }
+.adv-icoon { width: 44px; height: 44px; border-radius: 14px; background: var(--ok-bg); color: var(--bat-tekst); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.adv-vergelijk { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; background: var(--let-bg); border-radius: 12px; padding: 8px 10px; font-size: 12px; }
+.adv-vergelijk span.c-bat { font-weight: 600; }
+.adv-link { font-size: 12px; font-weight: 600; color: var(--oranje-diep); }
+:root[data-theme="dark"] .adv-link { color: var(--oranje); }
+.band-los { margin-top: 8px; }
+.adv-hero { font-size: 30px; font-weight: 300; letter-spacing: -0.02em; line-height: 1.15; }
+.adv-chart { width: 100%; height: 110px; display: block; }
+.adv-chart.kort { height: 64px; }
+.adv-chart .laadvlak { fill: var(--bat); fill-opacity: 0.16; }
+.adv-chart .r-verbruik { fill: var(--huis); fill-opacity: 0.35; }
+.adv-chart .as { stroke: var(--lijn-sterk); vector-effect: non-scaling-stroke; }
+.adv-chart .prijslijn { fill: none; stroke: var(--inkt); stroke-width: 2; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.c-bg-verbruik { background: var(--huis); opacity: 0.45; }
+.c-bg-laden { background: var(--bat); opacity: 0.3; }
+.pad-top { padding-top: 10px; }
+.stappen { margin: 0; padding: 0; list-style: none; counter-reset: stap; display: flex; flex-direction: column; gap: 10px; }
+.stappen li { counter-increment: stap; display: flex; gap: 10px; font-size: 14px; line-height: 1.4; }
+.stappen li::before { content: counter(stap); width: 22px; height: 22px; border-radius: 50%; background: var(--oranje); color: #20150E; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.knoppen { display: flex; gap: 8px; margin-top: 4px; }
+.knoppen .knop { flex: 1; padding: 11px 0; }
+.knop.vol { background: var(--inkt); color: var(--grond); border-color: transparent; }
+.stat small { font-size: 11px; color: var(--stil); }
+.invoer { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+.keuze input[type="number"], .invoer select { font: 600 14px var(--letter); color: var(--inkt); background: var(--glas-sterk); border: 1px solid var(--lijn-sterk); border-radius: 10px; padding: 6px 6px; }
+.keuze input[type="number"] { width: 84px; text-align: right; }
