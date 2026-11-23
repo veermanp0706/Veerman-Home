@@ -1,5 +1,15 @@
 # Wijzigingen
 
+## 0.7.0
+
+- Nieuwe pagina Systeem (was Batterij): opbrengst van vandaag per zonnepaneel, met een waarschuwing als een paneel duidelijk achterblijft, daaronder de batterij, en "Over je panelen" met totalen, records en temperatuur.
+- "Gisteren" en de lijst met dagen op de batterijpagina zijn vervallen.
+- Menu in de volgorde Historie, Systeem, Nu, Status, Prijzen.
+- Nu: de prijsgrafiek per uur is vervallen.
+- Historie: geen klikken meer op de grafiek en geen batterijgrafiek; nieuw: zelfvoorzienend en eigen gebruik van zon.
+- Prijzen: beste moment voor apparaten (1, 2 of 3 uur), omlijnd in de grafiek.
+- Meldingen via de Home Assistant-app: negatieve of zeer lage prijs, goedkoopste moment morgen, batterij niet vol, storing, token verloopt bijna. In te stellen bij Instellingen.
+
 ## 0.6.0
 
 - Historie vernieuwd: dagoverzicht met een ring (welk deel van je verbruik uit zon, batterij en net kwam), een grafiek met boven de lijn wat binnenkwam en onder de lijn waar het naartoe ging, per kwartier op de dagweergave, en de laadtoestand van de batterij.

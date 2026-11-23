@@ -11,6 +11,8 @@ from urllib.parse import parse_qs, urlparse
 
 import calc
 import ha_import
+import notify
+import panels
 import history
 import i18n
 import system
@@ -20,7 +22,7 @@ from storage import Storage
 from tariffs import Tariffs
 from timeutil import TZ, hhmm, parse_day
 
-VERSION = "0.6.0"
+VERSION = "0.7.0"
 DATA_DIR = os.environ.get("DATA_DIR", "/data")
 OPTIONS_PATH = os.environ.get("OPTIONS_PATH", os.path.join(DATA_DIR, "options.json"))
 STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
@@ -166,6 +168,8 @@ class App:
         else:
             self.importer = ha_import.Importer(self.store, self.prices, ha_token)
         log.info("historie uit Home Assistant: %s", "aan" if self.importer else "uit (" + self.importer_uit + ")")
+        self.panels = panels.PanelService(self) if gw else None
+        self.notifier = notify.Notifier(self, None if self.demo else ha_token, DATA_DIR)
 
     def start(self):
         if self.collector:
@@ -173,6 +177,10 @@ class App:
         self.prices.start()
         if self.importer:
             self.importer.start()
+        if self.panels:
+            self.panels.start()
+        if self.notifier.token:
+            self.notifier.start()
 
     # --- API ---------------------------------------------------------------
 
@@ -197,7 +205,6 @@ class App:
             },
             "prijs": price,
             "volgende": nxt,
-            "strip": [{"uur": h["uur"], "allin": h["allin"], "level": h["level"], "voorbij": h["t"] < cur, "nu": h["t"] == cur} for h in hours],
             "vandaag": calc.day_totals(self.store, self.tariffs, today, partial),
             "saldering": self.tariffs.saldering_actief(today),
             "interval": self.collector.interval if self.collector else 5,
@@ -228,6 +235,26 @@ class App:
 
     def api_battery(self, day_value):
         return history.battery(self.store, self.tariffs, parse_day(day_value), self.capacity)
+
+    def api_systeem(self):
+        status = self.system.get()
+        inv = status["omvormers"]["lijst"]
+        today = dt.datetime.now(TZ).date()
+        bat = history.battery(self.store, self.tariffs, today, self.capacity)
+        latest = self.collector.latest if self.collector else None
+        return {
+            "panelen": self.panels.vandaag(inv) if self.panels else None,
+            "records": self.panels.records(inv) if self.panels else None,
+            "slapen": status["omvormers"].get("slapen"),
+            "zon_nu": round(latest["pv"]) if latest else None,
+            "batterij": {
+                "laadtoestand": latest.get("soc") if latest else None,
+                "vermogen": round(latest["batt"]) if latest else None,
+                "vandaag": bat["vandaag"],
+                "curve": bat["curve"],
+                "nachtladen": bat["nachtladen"],
+            },
+        }
 
     def api_status(self):
         return {
@@ -274,6 +301,10 @@ def make_handler(app):
                     return self._json(i18n.translate(app.api_battery((q.get("datum") or [None])[0]), taal))
                 if path == "/api/system":
                     return self._json(i18n.translate(app.system.get(force=(q.get("vernieuw") or ["0"])[0] == "1"), taal))
+                if path == "/api/systeem":
+                    return self._json(app.api_systeem())
+                if path == "/api/meldingen":
+                    return self._json(app.notifier.instellingen())
                 if path == "/api/system/raw":
                     return self._json(app.system.raw())
                 if path == "/api/status":
@@ -287,6 +318,22 @@ def make_handler(app):
                 name, ctype = STATIC[path]
                 with open(os.path.join(STATIC_DIR, name), "rb") as f:
                     return self._send(200, f.read(), ctype, cache="no-cache")
+            self._json({"fout": "niet gevonden"}, 404)
+
+        def do_POST(self):
+            path = urlparse(self.path).path
+            try:
+                n = int(self.headers.get("Content-Length") or 0)
+                body = json.loads(self.rfile.read(n) or b"{}") if n else {}
+                if path == "/api/meldingen":
+                    return self._json(app.notifier.bewaar(body))
+                if path == "/api/meldingen/test":
+                    return self._json({"ok": app.notifier.test()})
+            except ValueError as e:
+                return self._json({"fout": str(e)}, 400)
+            except Exception as e:
+                log.exception("fout bij %s", path)
+                return self._json({"fout": str(e)}, 500)
             self._json({"fout": "niet gevonden"}, 404)
 
     return Handler

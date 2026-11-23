@@ -191,21 +191,6 @@ function tekenStromen(v, interval) {
   }
 }
 
-function tekenStrip(strip) {
-  const box = $("strip");
-  box.textContent = "";
-  if (!strip.length) return;
-  const vals = strip.map((h) => h.allin);
-  const lo = Math.min(...vals), hi = Math.max(...vals);
-  for (const h of strip) {
-    const i = document.createElement("i");
-    i.className = h.level + (h.voorbij ? " voorbij" : "") + (h.nu ? " nu" : "");
-    i.style.height = (8 + (hi > lo ? (h.allin - lo) / (hi - lo) : 0.5) * 28) + "px";
-    i.title = h.uur + "  " + euro(h.allin);
-    box.appendChild(i);
-  }
-}
-
 function tekenNu(d) {
   const live = $("live");
   live.classList.toggle("uit", !d.ok);
@@ -232,7 +217,6 @@ function tekenNu(d) {
   } else {
     nb.hidden = true;
   }
-  tekenStrip(d.strip || []);
   if (d.vermogen) tekenStromen(d.vermogen, d.interval);
 
   const td = d.vandaag;
@@ -244,9 +228,8 @@ function tekenNu(d) {
   // Batterijscherm gebruikt dezelfde gegevens
   const soc = d.vermogen ? d.vermogen.laadtoestand : null;
   $("b-soc").textContent = soc == null ? "–" : Math.round(soc) + "%";
-  $("b-vul").style.width = (soc || 0) + "%";
-  $("b-balk").setAttribute("aria-label", soc == null ? t("bat.onbekend") : t("bat.laadtoestand_pct", { pct: Math.round(soc) }));
   if (d.vermogen) {
+    $("y-zon-nu").textContent = t("sys.nu_w", { w: watt(d.vermogen.zon) });
     const b = d.vermogen.batterij;
     $("b-vermogen").textContent = Math.abs(b) < 15 ? t("bat.rust") : t(b > 0 ? "bat.ontlaadt" : "bat.laadt", { w: watt(b) });
   }
@@ -262,7 +245,7 @@ async function verversNu() {
     $("live").classList.add("uit");
     $("live-tekst").textContent = t("live.geen");
   }
-  if (tab === "nu" || tab === "batterij") nuTimer = setTimeout(verversNu, Math.max(3, interval) * 1000);
+  if (tab === "nu" || tab === "systeem") nuTimer = setTimeout(verversNu, Math.max(3, interval) * 1000);
 }
 
 /* ---------- Prijzen ---------- */
@@ -306,6 +289,9 @@ function tekenPrijzen(d) {
     bars.appendChild(i);
   }
 
+  laatstePrijzen = d;
+  tekenBeste();
+
   const box = $("blokken");
   box.textContent = "";
   for (const b of d.blokken) {
@@ -334,6 +320,57 @@ function tekenPrijzen(d) {
     o.hidden = true;
   }
 }
+
+let laatstePrijzen = null;
+let blokLengte = 2;
+try { blokLengte = parseInt(localStorage.getItem("blok") || "2", 10) || 2; } catch (e) { /* geen opslag */ }
+
+/** Goedkoopste aaneengesloten blok van n uur binnen [van, tot); geeft de index in uren. */
+function besteBlok(uren, n, van, tot) {
+  let beste = null;
+  for (let i = 0; i + n <= uren.length; i++) {
+    const u = parseInt(uren[i].uur, 10);
+    if (u < van || u + n > tot) continue;
+    const gem = uren.slice(i, i + n).reduce((a, h) => a + h.allin, 0) / n;
+    if (!beste || gem < beste.gem) beste = { i, gem };
+  }
+  return beste;
+}
+
+const uurTekst = (u) => String(u % 24).padStart(2, "0") + ":00";
+
+function tekenBeste() {
+  const d = laatstePrijzen;
+  document.querySelectorAll("[data-blok]").forEach((b) => b.setAttribute("aria-pressed", String(parseInt(b.dataset.blok, 10) === blokLengte)));
+  const kaart = $("p-beste");
+  const bars = $("bars").children;
+  for (const el of bars) el.classList.remove("beste");
+  if (!d || !d.uren.length) { kaart.hidden = true; return; }
+  const vanaf = d.is_vandaag ? new Date().getHours() : 0;
+  const b = besteBlok(d.uren, blokLengte, vanaf, 24);
+  kaart.hidden = !b;
+  $("p-beste-noot").hidden = !b;
+  if (!b) return;
+  const u = parseInt(d.uren[b.i].uur, 10);
+  $("p-beste-tijd").textContent = `${uurTekst(u)} – ${uurTekst(u + blokLengte)}`;
+  $("p-beste-prijs").textContent = t("prijs.gem", { prijs: euro(b.gem) });
+  for (let k = b.i; k < b.i + blokLengte; k++) if (bars[k]) bars[k].classList.add("beste");
+  const dag = besteBlok(d.uren, blokLengte, Math.max(vanaf, 8), 17);
+  if (dag && dag.i !== b.i) {
+    const v = parseInt(d.uren[dag.i].uur, 10);
+    $("p-beste-dag").innerHTML = t("prijs.overdag", { tijd: `<b>${uurTekst(v)} – ${uurTekst(v + blokLengte)}</b>`, prijs: euro(dag.gem) });
+  } else {
+    $("p-beste-dag").textContent = "";
+  }
+}
+
+document.querySelectorAll("[data-blok]").forEach((b) =>
+  b.addEventListener("click", () => {
+    blokLengte = parseInt(b.dataset.blok, 10);
+    try { localStorage.setItem("blok", String(blokLengte)); } catch (e) { /* geen opslag */ }
+    tekenBeste();
+  })
+);
 
 async function verversPrijzen() {
   clearTimeout(prijsTimer);
@@ -385,7 +422,11 @@ function tekenHistorie(d) {
   tekenRing(tt);
 
   tekenTweezijdig(d);
-  tekenSoc(d);
+
+  // Zelfvoorzienend en eigen gebruik van zon
+  const verbruik = tt.verbruik_kwh || 0, zon = tt.opgewekt_kwh || 0;
+  $("h-zelf").textContent = verbruik > 0.01 ? Math.round(Math.max(0, Math.min(1, 1 - (tt.huis_uit_net_kwh || 0) / verbruik)) * 100) + "%" : "–";
+  $("h-eigen").textContent = zon > 0.01 ? Math.round(Math.max(0, Math.min(1, (zon - (tt.terug_kwh || 0)) / zon)) * 100) + "%" : "–";
   const b = tt.batterij;
   $("h-laadnoot").textContent = b.uit_net_kwh > 0.05 ? t("hist.laadnoot", { kwh: kwh3(b.uit_net_kwh) }) : "";
   let dekking = "";
@@ -467,8 +508,6 @@ function tekenTweezijdig(d) {
     el.appendChild(g);
   });
   el.appendChild(svg("line", { x1: 0, x2: W, y1: M, y2: M, class: "nul" }));
-  const markeer = svg("rect", { id: "h-markeer", x: -10, y: 0, width: bw, height: H, class: "markeer" });
-  el.insertBefore(markeer, el.firstChild);
   el.setAttribute("aria-label", t("hist.bars_aria2", { in: kwh3(d.totaal.opgewekt_kwh + d.totaal.afname_kwh + d.totaal.uit_batterij_kwh), huis: kwh3(d.totaal.verbruik_kwh) }));
 
   // As
@@ -482,49 +521,8 @@ function tekenTweezijdig(d) {
     const ticks = d.periode === "maand" ? [0, 9, 19, n - 1] : reeks.map((_, i) => i);
     reeks.forEach((r, i) => { const s = document.createElement("span"); s.textContent = ticks.includes(i) ? r.label : ""; as.appendChild(s); });
   }
-  $("h-detail").textContent = t("hist.tik");
-  histReeks = d;
 }
 
-let histReeks = null;
-function toonDetail(ev) {
-  const d = histReeks;
-  if (!d) return;
-  const el = $("h-bars");
-  const box = el.getBoundingClientRect();
-  const i = Math.min(d.reeks.length - 1, Math.max(0, Math.floor(((ev.clientX - box.left) / box.width) * d.reeks.length)));
-  const r = d.reeks[i];
-  const bw = 316 / d.reeks.length;
-  const m = $("h-markeer");
-  if (m) { m.setAttribute("x", (i * bw).toFixed(2)); m.setAttribute("width", bw.toFixed(2)); }
-  let wanneer = r.label;
-  if (d.periode === "dag") {
-    const [hh, mm] = r.label.split(":").map(Number);
-    const eind = new Date(2000, 0, 1, hh, mm + 15);
-    wanneer = `${r.label}–${String(eind.getHours()).padStart(2, "0")}:${String(eind.getMinutes()).padStart(2, "0")}`;
-  }
-  $("h-detail").innerHTML = !r.in ? `<b>${esc(wanneer)}</b> · ${esc(t("hist.geen_meting"))}` : t("hist.detail", {
-    wanneer: `<b>${esc(wanneer)}</b>`,
-    zon: kwh3(r.in.zon), bat: kwh3(r.in.bat_uit), net: kwh3(r.in.net),
-    huis: kwh3(r.uit.huis), batin: kwh3(r.uit.bat_in), terug: kwh3(r.uit.terug),
-  }) + (r.per_uur ? " " + esc(t("hist.per_uur_noot")) : "");
-}
-$("h-bars").addEventListener("click", toonDetail);
-$("h-bars").addEventListener("pointermove", (e) => { if (e.pointerType === "mouse") toonDetail(e); });
-
-function tekenSoc(d) {
-  const kaart = $("h-soc-kaart");
-  const pts = d.laadtoestand || [];
-  kaart.hidden = d.periode !== "dag" || !pts.length;
-  if (kaart.hidden) return;
-  const xy = pts.map((p) => [((p.uur / 24) * 316).toFixed(1), (78 - (p.soc / 100) * 76).toFixed(1)]);
-  const lijn = "M" + xy.map(([x, y]) => `${x} ${y}`).join(" L");
-  $("h-soc-lijn").setAttribute("d", lijn);
-  $("h-soc-vlak").setAttribute("d", `${lijn} L${xy[xy.length - 1][0]} 78 L${xy[0][0]} 78 Z`);
-  const laatste = pts[pts.length - 1];
-  $("h-soc-nu").textContent = d.lopend ? t("hist.soc_nu", { pct: Math.round(laatste.soc) }) : "";
-  $("h-soc").setAttribute("aria-label", t("bat.curve_nu", { pct: Math.round(laatste.soc) }));
-}
 
 async function verversHistorie() {
   clearTimeout(histTimer);
@@ -552,61 +550,71 @@ $("h-volgende").addEventListener("click", () => {
 
 /* ---------- Batterij ---------- */
 
-let batTimer = null;
+let sysTimer = null;
 
-function verliesTekst(v) {
-  if (!v) return "–";
-  return kwh3(v.kwh) + (v.procent != null ? `<small>${t("bat.van_lading", { pct: v.procent })}</small>` : "");
-}
+const datumKort = (iso) => (iso ? new Date(iso + "T12:00:00").toLocaleDateString(locale(), { day: "numeric", month: "short", year: "numeric" }) : "–");
 
-function tekenBatterij(d) {
-  const v = d.vandaag;
+function tekenSysteem(d) {
+  const p = d.panelen;
+  const box = $("y-panelen");
+  box.textContent = "";
+  if (p && p.lijst.length) {
+    const best = Math.max(0.001, ...p.lijst.map((x) => x.vandaag_kwh || 0));
+    const zwak = new Set((p.zwak || []).map((z) => z.nr));
+    for (const x of p.lijst) {
+      const r = (x.vandaag_kwh || 0) / best;
+      const el = document.createElement("div");
+      el.className = "ptegel" + (zwak.has(x.nr) ? " zwak" : "") + (x.status === "fout" ? " fout" : "");
+      el.style.setProperty("--licht", Math.max(0.15, Math.min(1, (r - 0.4) / 0.6)).toFixed(2));
+      el.innerHTML = `<div class="kop"><span>${esc(t("status.paneel", { nr: x.nr }))}</span><span>${x.slaapt ? esc(t("status.slaapt")) : x.watt == null ? "" : watt(x.watt)}</span></div>
+        <b>${x.vandaag_kwh == null ? "–" : fmtGetal(x.vandaag_kwh, 3)}<small> kWh</small></b>
+        <div class="meter"><i style="width:${(r * 100).toFixed(0)}%"></i></div>`;
+      box.appendChild(el);
+    }
+    $("y-zon").innerHTML = p.totaal_kwh == null ? "–" : `${fmtGetal(p.totaal_kwh, 3)}<small> kWh</small>`;
+    $("y-beste").textContent = p.beste_kwh ? t("sys.beste", { kwh: fmtGetal(p.beste_kwh, 3) }) : "";
+    const z = (p.zwak || [])[0];
+    $("y-zwak").hidden = !z;
+    if (z) $("y-zwak-tekst").innerHTML = t("sys.zwak", { nr: z.nr, pct: z.procent });
+    $("y-noot").textContent = p.bron === "eigen telling" ? t("sys.eigen_telling") : "";
+  } else {
+    box.innerHTML = `<p class="note">${esc(t("status.geen_omv"))}</p>`;
+  }
+
+  const b = d.batterij;
+  const v = b.vandaag;
   $("b-in").textContent = kwh3(v.geladen_kwh);
   $("b-uit").textContent = kwh3(v.ontladen_kwh);
   $("b-cycli").textContent = v.cycli == null ? "–" : fmtGetal(v.cycli, 3);
   zetOpbrengst($("b-op-vandaag"), v.opbrengst);
-
-  const pts = d.curve.map((p) => `${((p.uur / 24) * 316).toFixed(1)},${(88 - p.soc * 0.8).toFixed(1)}`);
-  $("b-lijn").setAttribute("points", pts.join(" "));
-  const last = d.curve[d.curve.length - 1];
-  const punt = $("b-punt");
-  if (last) { punt.setAttribute("cx", ((last.uur / 24) * 316).toFixed(1)); punt.setAttribute("cy", (88 - last.soc * 0.8).toFixed(1)); }
-  $("b-curve").setAttribute("aria-label", last ? t("bat.curve_nu", { pct: Math.round(last.soc) }) : t("bat.curve_geen"));
-
+  const pts = b.curve || [];
+  if (pts.length) {
+    const xy = pts.map((q) => [((q.uur / 24) * 316).toFixed(1), (78 - (q.soc / 100) * 76).toFixed(1)]);
+    const lijn = "M" + xy.map(([x, y]) => `${x} ${y}`).join(" L");
+    $("b-lijn").setAttribute("d", lijn);
+    $("b-vlak").setAttribute("d", `${lijn} L${xy[xy.length - 1][0]} 78 L${xy[0][0]} 78 Z`);
+    $("b-curve").setAttribute("aria-label", t("bat.curve_nu", { pct: Math.round(pts[pts.length - 1].soc) }));
+  }
+  const n = b.nachtladen;
   const nacht = $("b-nacht");
-  const n = d.nachtladen;
   if (n.vol_om) { nacht.textContent = t("bat.vol_om", { tijd: n.vol_om }); nacht.className = "status"; }
   else if (n.max_procent != null && new Date().getHours() >= 9) { nacht.textContent = t("bat.niet_vol", { pct: n.max_procent }); nacht.className = "status mis"; }
-  else { nacht.textContent = ""; }
+  else nacht.textContent = "";
 
-  const g = d.gisteren;
-  zetOpbrengst($("g-op"), g.heeft_data ? g.opbrengst : null);
-  $("g-in").textContent = g.heeft_data ? kwh3(g.geladen_kwh) : "–";
-  $("g-uit").textContent = g.heeft_data ? kwh3(g.ontladen_kwh) : "–";
-  $("g-verlies").innerHTML = g.heeft_data ? verliesTekst(g.verlies) : "–";
-  $("g-cycli").textContent = g.heeft_data && g.cycli != null ? fmtGetal(g.cycli, 3) : "–";
-  $("g-uitleg").textContent = !g.heeft_data
-    ? t("bat.geen_gisteren")
-    : g.laadprijs != null && g.gebruiksprijs != null
-      ? t("bat.uitleg", { laad: euro(g.laadprijs, 3), gebruik: euro(g.gebruiksprijs, 3) })
-      : "";
-
-  const lijst = $("b-dagen");
-  lijst.textContent = "";
-  $("b-dagen-kaart").hidden = !d.dagen.length;
-  for (const r of d.dagen) {
-    const rij = document.createElement("div");
-    rij.className = "blok";
-    rij.innerHTML = `<span class="tijd">${r.dag}</span><span class="lvl">${t("bat.ontladen_kwh", { kwh: kwh3(r.ontladen_kwh) })}</span><span class="bedrag ${r.opbrengst != null && r.opbrengst < 0 ? "c-min" : "c-bat"}">${signedEuro(r.opbrengst)}</span>`;
-    lijst.appendChild(rij);
-  }
-  zetOpbrengst($("b-samen"), d.dagen_samen);
+  const r = d.records || {};
+  $("r-totaal").textContent = r.sinds_installatie_kwh != null ? fmtGetal(r.sinds_installatie_kwh, 0) + " kWh" : "–";
+  $("r-jaar").textContent = r.dit_jaar_kwh != null ? fmtGetal(r.dit_jaar_kwh, 0) + " kWh" : "–";
+  $("r-beste").textContent = r.beste_dag_kwh != null ? kwh3(r.beste_dag_kwh) : "–";
+  $("r-beste-datum").textContent = datumKort(r.beste_dag);
+  $("r-paneel").textContent = r.beste_paneel ? t("status.paneel", { nr: r.beste_paneel }) : "–";
+  $("r-temp").textContent = r.temp_min != null ? (r.temp_min === r.temp_max ? `${r.temp_min} °C` : `${r.temp_min}–${r.temp_max} °C`) : "–";
+  $("r-noot").textContent = r.sinds ? t("sys.records_noot", { datum: datumKort(r.sinds) }) : "";
 }
 
-async function verversBatterij() {
-  clearTimeout(batTimer);
-  try { tekenBatterij(await haal(metTaal("api/battery"))); } catch (e) { /* volgende keer opnieuw */ }
-  if (tab === "batterij") batTimer = setTimeout(verversBatterij, 60 * 1000);
+async function verversSysteem() {
+  clearTimeout(sysTimer);
+  try { tekenSysteem(await haal("api/systeem")); } catch (e) { /* volgende keer opnieuw */ }
+  if (tab === "systeem") sysTimer = setTimeout(verversSysteem, 60 * 1000);
 }
 
 /* ---------- Status ---------- */
@@ -742,9 +750,55 @@ async function verversStatus(vernieuw = false) {
 }
 $("s-vernieuw").addEventListener("click", () => verversStatus(true));
 
+/* ---------- Meldingen ---------- */
+
+let meldingen = null;
+
+async function laadMeldingen() {
+  try { meldingen = await haal("api/meldingen"); } catch (e) { meldingen = null; }
+  tekenMeldingen();
+}
+
+function tekenMeldingen() {
+  const m = meldingen;
+  const beschikbaar = !!(m && m.beschikbaar);
+  const niet = $("m-niet");
+  niet.hidden = beschikbaar && m.doelen.length > 0;
+  niet.textContent = !beschikbaar ? t("inst.m_geen_toegang") : t("inst.m_geen_telefoon");
+  const sel = $("m-doel");
+  sel.innerHTML = `<option value="">${esc(t("inst.m_kies"))}</option>` +
+    (m ? m.doelen.map((d) => `<option value="${esc(d.id)}">${esc(d.naam)}</option>`).join("") : "");
+  sel.value = (m && m.instellingen.doel) || "";
+  sel.disabled = !beschikbaar;
+  document.querySelectorAll("[data-melding]").forEach((c) => {
+    c.checked = !!(m && m.instellingen[c.dataset.melding]);
+    c.disabled = !beschikbaar || !sel.value;
+  });
+  $("m-test").disabled = !beschikbaar || !sel.value;
+}
+
+async function bewaarMeldingen(wijziging) {
+  try {
+    const r = await fetch("api/meldingen", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...wijziging, taal: TAAL }) });
+    if (r.ok) meldingen = await r.json();
+  } catch (e) { /* blijft zoals het was */ }
+  tekenMeldingen();
+}
+
+$("m-doel").addEventListener("change", (e) => bewaarMeldingen({ doel: e.target.value || null }));
+document.querySelectorAll("[data-melding]").forEach((c) => c.addEventListener("change", () => bewaarMeldingen({ [c.dataset.melding]: c.checked })));
+$("m-test").addEventListener("click", async () => {
+  const k = $("m-test");
+  k.disabled = true;
+  let ok = false;
+  try { ok = (await (await fetch("api/meldingen/test", { method: "POST" })).json()).ok; } catch (e) { /* mislukt */ }
+  $("m-test-tekst").textContent = t(ok ? "inst.m_test_ok" : "inst.m_test_mis");
+  k.disabled = false;
+});
+
 /* ---------- Navigatie ---------- */
 
-const TABS = ["nu", "prijzen", "historie", "batterij", "status"];
+const TABS = ["historie", "systeem", "nu", "status", "prijzen"];
 
 function toon(naam) {
   tab = naam;
@@ -755,12 +809,12 @@ function toon(naam) {
     if (b.dataset.tab === actieveTab) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current");
   }
   window.scrollTo(0, 0);
-  if (naam === "nu" || naam === "batterij") verversNu();
+  if (naam === "nu" || naam === "systeem") verversNu();
   if (naam === "prijzen") verversPrijzen();
   if (naam === "historie") verversHistorie();
-  if (naam === "batterij") verversBatterij();
+  if (naam === "systeem") verversSysteem();
   if (naam === "status") verversStatus();
-  if (naam === "instellingen") { pasTaalToe(); if (!laatsteStatus) verversStatus(); }
+  if (naam === "instellingen") { pasTaalToe(); if (!laatsteStatus) verversStatus(); laadMeldingen(); }
   if (TABS.includes(naam)) { try { localStorage.setItem("tab", naam); } catch (e) { /* geen opslag */ } }
 }
 
@@ -780,7 +834,8 @@ document.addEventListener("pointerdown", () => document.body.classList.remove("t
 
 pasTaalToe();
 let start = "nu";
-try { start = localStorage.getItem("tab") || "nu"; } catch (e) { /* geen opslag */ }
+try { start = localStorage.getItem("tab") || "nu";
+  if (start === "batterij") start = "systeem"; } catch (e) { /* geen opslag */ }
 toon(TABS.includes(start) ? start : "nu");
 // Stip bij Status als er iets aandacht nodig heeft, ook als je op een ander scherm bent
 if (start !== "status") verversStatus();

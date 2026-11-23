@@ -108,6 +108,12 @@ class SystemStatus:
 
     def raw(self):
         raw, errors = self._fetch_raw()
+        gw = self.app.gateway
+        if gw is not None and not self.app.demo:
+            try:
+                raw["device_data"] = gw.get_json("/ivp/pdm/device_data")
+            except Exception as e:
+                errors["device_data"] = str(e)
         return {"gegevens": raw, "fouten": errors}
 
     def get(self, force=False):
@@ -247,6 +253,7 @@ class SystemStatus:
             lijst.append({
                 "nr": i,
                 "serie": _kort(sn),
+                "serie_lang": sn,
                 "watt": p.get("lastReportWatts"),
                 "max_watt": p.get("maxReportWatts"),
                 "laatste": _wanneer(last, now),

@@ -405,4 +405,46 @@ body.toetsenbord button:focus-visible { outline: 3px solid var(--oranje); outlin
 .soc-stop2 { stop-color: var(--bat); stop-opacity: 0.04; }
 .soc-lijn { fill: none; stroke: var(--bat); stroke-width: 2; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
 
+/* ===== 0.7: Systeem, beste moment, zelfvoorzienend, meldingen ===== */
+.tiles.twee { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.licht-getal { font-size: 26px !important; font-weight: 300 !important; letter-spacing: -0.02em; }
+.licht-getal small { font-size: 12px; font-weight: 500; }
+.paneelgrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.ptegel { --licht: 0.6; position: relative; border-radius: 14px; padding: 8px 9px 9px; display: flex; flex-direction: column; gap: 3px; min-width: 0;
+  border: 1px solid var(--glas-rand);
+  background: linear-gradient(160deg, rgba(232, 162, 0, calc(0.12 + var(--licht) * 0.55)), rgba(232, 162, 0, calc(0.05 + var(--licht) * 0.22))); }
+.ptegel .kop { display: flex; justify-content: space-between; gap: 4px; font-size: 10.5px; color: var(--stil); white-space: nowrap; }
+.ptegel b { font-size: 17px; font-weight: 600; letter-spacing: -0.01em; white-space: nowrap; }
+.ptegel b small { font-size: 10px; font-weight: 500; color: var(--stil); }
+.ptegel .meter { height: 4px; border-radius: 99px; background: var(--lijn); overflow: hidden; }
+.ptegel .meter i { display: block; height: 100%; border-radius: 99px; background: var(--zon); }
+.ptegel.zwak { border: 1.5px solid var(--zon); }
+.ptegel.fout { border: 1.5px solid var(--duur); }
+.hint { display: flex; gap: 8px; align-items: flex-start; background: var(--let-bg); border-radius: 14px; padding: 9px 11px; font-size: 12px; line-height: 1.4; }
+.hint .stip { width: 8px; height: 8px; border-radius: 50%; background: var(--zon); margin-top: 4px; flex-shrink: 0; }
+.hint b { font-weight: 700; }
+.zelf { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; border-top: 1px solid var(--lijn); padding-top: 12px; margin-top: 4px; }
+.zelf > div { display: flex; flex-direction: column; gap: 1px; }
+.zelf span, .zelf small { font-size: 11px; color: var(--stil); }
+.zelf b { font-size: 22px; font-weight: 600; }
+.segment.drie { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.segment.klein { background: var(--lijn); border-color: transparent; padding: 3px; }
+.segment.klein button { min-height: 34px; font-size: 13px; }
+.card .segment.klein button[aria-pressed="true"] { background: var(--inkt); color: var(--grond); }
+.beste-tijd { font-size: 26px; font-weight: 500; letter-spacing: -0.02em; }
+.beste-prijs { font-size: 14px; font-weight: 600; }
+.bars i.beste { outline: 2px solid var(--inkt); outline-offset: 1px; opacity: 1; }
+.pad-y { padding: 2px 0; }
+.keuze.rij { cursor: default; }
+.keuze select { font: 600 14px var(--letter); color: var(--inkt); background: var(--glas-sterk); border: 1px solid var(--lijn-sterk); border-radius: 10px; padding: 6px 8px; max-width: 46%; }
+.schakel { appearance: none; -webkit-appearance: none; position: relative; width: 46px; height: 26px; border-radius: 99px; background: var(--lijn-sterk); flex-shrink: 0; cursor: pointer; transition: background 0.2s; margin: 0; }
+.schakel::after { content: ""; position: absolute; top: 2px; left: 2px; width: 22px; height: 22px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25); transition: left 0.2s; }
+.schakel:checked { background: var(--oranje); }
+.schakel:checked::after { left: 22px; }
+.schakel:disabled { opacity: 0.4; cursor: default; }
+.knop { font: 600 14px var(--letter); color: var(--inkt); background: var(--glas-sterk); border: 1px solid var(--lijn-sterk); border-radius: 999px; padding: 8px 16px; cursor: pointer; }
+.knop:disabled { opacity: 0.4; cursor: default; }
+
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+:root[data-theme="dark"] .tile .c-goed { color: #8BF0C8; }
+:root[data-theme="dark"] .tile .c-duur { color: #FFB8C4; }

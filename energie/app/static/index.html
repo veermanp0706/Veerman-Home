@@ -54,12 +54,6 @@
       </div>
     </header>
     <main>
-      <section class="card" data-t-aria="nu.peruur_aria" aria-label="Prijs per uur vandaag">
-        <h2 data-t="nu.peruur">Vandaag per uur</h2>
-        <div class="strip" id="strip" aria-hidden="true"></div>
-        <div class="axis"><span>00</span><span>06</span><span>12</span><span>18</span><span>23</span></div>
-      </section>
-
       <section class="card" data-t-aria="nu.stromen" aria-label="Energiestromen">
         <h2 data-t="nu.stromen">Energiestromen</h2>
         <svg class="flow" viewBox="0 0 340 372" role="img" id="flow" aria-label="Energiestromen">
@@ -137,6 +131,21 @@
         </button>
       </section>
 
+      <h2 class="sectie" id="kop-meldingen" data-t="inst.meldingen">Meldingen</h2>
+      <section class="card list" aria-labelledby="kop-meldingen" id="meldingen">
+        <p class="note pad-y" id="m-niet" hidden></p>
+        <label class="keuze rij" id="m-doel-rij">
+          <span class="stack"><b data-t="inst.stuur_naar">Stuur naar</b><small data-t="inst.stuur_uitleg">Telefoon met de Home Assistant-app</small></span>
+          <select id="m-doel"></select>
+        </label>
+        <label class="keuze rij"><span class="stack"><b data-t="inst.m_negatief">Negatieve of zeer lage prijs</b><small data-t="inst.m_negatief_uitleg">Een dag vooruit, zodra de prijzen bekend zijn</small></span><input type="checkbox" class="schakel" data-melding="negatief"></label>
+        <label class="keuze rij"><span class="stack"><b data-t="inst.m_morgen">Goedkoopste moment morgen</b><small data-t="inst.m_morgen_uitleg">Elke middag om 14:00 het beste blok van 2 uur</small></span><input type="checkbox" class="schakel" data-melding="morgen"></label>
+        <label class="keuze rij"><span class="stack"><b data-t="inst.m_nietvol">Batterij niet vol</b><small data-t="inst.m_nietvol_uitleg">'s Ochtends, als het nachtladen niet tot 100% kwam</small></span><input type="checkbox" class="schakel" data-melding="nietvol"></label>
+        <label class="keuze rij"><span class="stack"><b data-t="inst.m_storing">Storing in het systeem</b><small data-t="inst.m_storing_uitleg">Omvormer, batterij of gateway; niet bij slapende omvormers</small></span><input type="checkbox" class="schakel" data-melding="storing"></label>
+        <label class="keuze rij"><span class="stack"><b data-t="inst.m_token">Token verloopt bijna</b><small data-t="inst.m_token_uitleg">30 en 7 dagen van tevoren</small></span><input type="checkbox" class="schakel" data-melding="token"></label>
+        <div class="keuze rij"><span class="note" id="m-test-tekst" data-t="inst.m_gedeeld">Deze instellingen gelden voor alle apparaten.</span><button type="button" class="knop" id="m-test" data-t="inst.m_test">Test</button></div>
+      </section>
+
       <h2 class="sectie" data-t="inst.over">Over de app</h2>
       <section class="card">
         <dl class="kv groot-kv">
@@ -144,7 +153,7 @@
           <dt>Gateway</dt><dd id="i-gateway">–</dd>
         </dl>
       </section>
-      <p class="note pad-l" data-t="inst.bewaard">Deze instellingen worden op dit apparaat bewaard.</p>
+      <p class="note pad-l" data-t="inst.bewaard">Weergave en taal worden op dit apparaat bewaard.</p>
     </main>
   </section>
 
@@ -167,12 +176,23 @@
     </header>
     <main>
       <p class="card leeg" id="p-leeg" hidden></p>
+      <section class="card" id="p-beste" data-t-aria="prijs.beste" aria-label="Beste moment voor apparaten">
+        <h2 data-t="prijs.beste">Beste moment voor apparaten</h2>
+        <div class="segment drie klein" role="group" data-t-aria="prijs.duur_kiezen" aria-label="Hoe lang">
+          <button type="button" data-blok="1" aria-pressed="false" data-t="prijs.1uur">1 uur</button>
+          <button type="button" data-blok="2" aria-pressed="true" data-t="prijs.2uur">2 uur</button>
+          <button type="button" data-blok="3" aria-pressed="false" data-t="prijs.3uur">3 uur</button>
+        </div>
+        <div class="row end"><b class="beste-tijd" id="p-beste-tijd">–</b><span class="c-goed beste-prijs" id="p-beste-prijs"></span></div>
+        <p class="note" id="p-beste-dag"></p>
+      </section>
       <section class="card" id="p-grafiek" data-t-aria="prijs.peruur" aria-label="Prijs per uur">
         <div class="chart">
           <div class="yaxis" aria-hidden="true"><span id="y-max"></span><span id="y-mid"></span><span id="y-min"></span></div>
           <div class="bars" id="bars" role="img"></div>
         </div>
         <div class="axis pad"><span>00</span><span>06</span><span>12</span><span>18</span><span>23</span></div>
+        <p class="note pad-y" id="p-beste-noot" data-t="prijs.omlijnd">Het beste blok is omlijnd in de grafiek.</p>
         <div class="legend pad">
           <span><i class="sw goedkoop"></i><span data-t="niveau.goedkoop">Goedkoop</span></span><span><i class="sw normaal"></i><span data-t="niveau.normaal">Normaal</span></span><span><i class="sw duur"></i><span data-t="niveau.duur">Duur</span></span>
         </div>
@@ -233,6 +253,10 @@
           <div class="getal"><b class="c-bat" id="h-bat-in">–</b><span data-t="hist.in_batterij">In batterij</span></div>
         </div>
         <div class="aandelen" id="h-aandelen"></div>
+        <div class="zelf">
+          <div><span data-t="hist.zelfvoorzienend">Zelfvoorzienend</span><b class="c-bat" id="h-zelf">–</b><small data-t="hist.zelf_uitleg">van je verbruik zonder het net</small></div>
+          <div><span data-t="hist.eigen_zon">Eigen gebruik zon</span><b class="c-zon" id="h-eigen">–</b><small data-t="hist.eigen_uitleg">van je zonnestroom zelf gebruikt</small></div>
+        </div>
       </section>
 
       <section class="card" data-t-aria="hist.energie" aria-label="Energie">
@@ -244,75 +268,64 @@
         </div>
         <div class="axis pad" id="h-as"></div>
         <div class="legend wrap"><b data-t="hist.ging_naar">▼ Ging naar</b><span><i class="sw c-bg-huis"></i><span data-t="node.huis">Huis</span></span><span><i class="sw c-bg-batin"></i><span data-t="node.batterij">Batterij</span></span><span><i class="sw c-bg-terug"></i><span data-t="node.terug">Terug</span></span></div>
-        <p class="note detail" id="h-detail" data-t="hist.tik">Tik op een kolom voor de waarden.</p>
         <p class="note" id="h-laadnoot"></p>
       </section>
 
-      <section class="card" id="h-soc-kaart" data-t-aria="bat.laadtoestand" aria-label="Laadtoestand" hidden>
-        <div class="row"><h2 data-t="hist.laadtoestand">Laadtoestand batterij</h2><span class="status" id="h-soc-nu"></span></div>
-        <div class="chart">
-          <div class="yaxis kort" aria-hidden="true"><span>100%</span><span>0%</span></div>
-          <svg class="soc-curve" id="h-soc" viewBox="0 0 316 80" preserveAspectRatio="none" role="img">
-            <defs><linearGradient id="soc-vul" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="soc-stop1"/><stop offset="1" class="soc-stop2"/></linearGradient></defs>
-            <line x1="0" y1="2" x2="316" y2="2" class="grid"/><line x1="0" y1="78" x2="316" y2="78" class="grid sterk"/>
-            <path id="h-soc-vlak" fill="url(#soc-vul)"/><path id="h-soc-lijn" class="soc-lijn"/>
-          </svg>
-        </div>
-        <div class="axis pad"><span>00</span><span>06</span><span>12</span><span>18</span><span>24</span></div>
-      </section>
       <p class="note center" id="h-dekking"></p>
     </main>
   </section>
 
-  <!-- BATTERIJ -->
-  <section class="screen" id="scherm-batterij" aria-labelledby="titel-batterij" hidden>
+  <!-- SYSTEEM -->
+  <section class="screen" id="scherm-systeem" aria-labelledby="titel-systeem" hidden>
     <header class="band">
-      <h1 id="titel-batterij" data-t="tab.batterij">Batterij</h1>
-      <div class="row end">
-        <span class="hero" id="b-soc">–</span>
-        <span class="sub right" id="b-vermogen"></span>
+      <h1 id="titel-systeem" data-t="tab.systeem">Systeem</h1>
+      <div class="tiles twee">
+        <div class="tile"><span data-t="sys.zon_vandaag">Zon vandaag</span><b class="licht-getal" id="y-zon">–</b><span id="y-zon-nu"></span></div>
+        <div class="tile"><span data-t="node.batterij">Batterij</span><b class="licht-getal" id="b-soc">–</b><span id="b-vermogen"></span></div>
       </div>
-      <div class="soc" role="img" id="b-balk" aria-label="Laadtoestand"><i id="b-vul"></i></div>
     </header>
     <main>
-      <section class="card" data-t-aria="bat.vandaag_aria" aria-label="Laadtoestand vandaag">
+      <section class="card" data-t-aria="sys.panelen" aria-label="Zonnepanelen vandaag">
+        <div class="row"><h2 data-t="sys.panelen">Zonnepanelen vandaag</h2><span class="note" id="y-beste"></span></div>
+        <div class="paneelgrid" id="y-panelen"></div>
+        <div class="hint" id="y-zwak" hidden><span class="stip"></span><span id="y-zwak-tekst"></span></div>
+        <p class="note" id="y-noot"></p>
+      </section>
+
+      <section class="card" data-t-aria="sys.batterij_vandaag" aria-label="Batterij vandaag">
         <div class="row">
-          <h2 data-t="prijs.vandaag">Vandaag</h2>
+          <h2 data-t="sys.batterij_vandaag">Batterij vandaag</h2>
           <span class="status" id="b-nacht"></span>
         </div>
-        <svg class="curve" viewBox="0 0 316 96" preserveAspectRatio="none" role="img" id="b-curve" aria-label="Laadtoestand vandaag">
-          <line x1="0" y1="8" x2="316" y2="8" class="grid"/>
-          <line x1="0" y1="48" x2="316" y2="48" class="grid"/>
-          <line x1="0" y1="88" x2="316" y2="88" class="grid sterk"/>
-          <polyline id="b-lijn" points=""/>
-          <circle id="b-punt" r="4.5" cx="-10" cy="-10"/>
-        </svg>
-        <div class="axis"><span>00</span><span>06</span><span>12</span><span>18</span><span>24</span></div>
+        <div class="chart">
+          <div class="yaxis kort" aria-hidden="true"><span>100%</span><span>0%</span></div>
+          <svg class="soc-curve" id="b-curve" viewBox="0 0 316 80" preserveAspectRatio="none" role="img">
+            <defs><linearGradient id="soc-vul" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="soc-stop1"/><stop offset="1" class="soc-stop2"/></linearGradient></defs>
+            <line x1="0" y1="2" x2="316" y2="2" class="grid"/><line x1="0" y1="78" x2="316" y2="78" class="grid sterk"/>
+            <path id="b-vlak" fill="url(#soc-vul)"/><path id="b-lijn" class="soc-lijn"/>
+          </svg>
+        </div>
+        <div class="axis pad"><span>00</span><span>06</span><span>12</span><span>18</span><span>24</span></div>
         <div class="grid2 boven">
           <div class="stat"><span data-t="bat.geladen">Geladen</span><b id="b-in">–</b></div>
           <div class="stat"><span data-t="bat.ontladen">Ontladen</span><b id="b-uit">–</b></div>
           <div class="stat"><span data-t="bat.cycli">Cycli</span><b id="b-cycli">–</b></div>
-          <div class="stat"><span data-t="bat.opbrengst">Opbrengst</span><b class="c-bat" id="b-op-vandaag">–</b></div>
+          <div class="stat"><span data-t="sys.opbrengst_vandaag">Opbrengst vandaag</span><b class="c-bat" id="b-op-vandaag">–</b></div>
         </div>
+        <p class="note" data-t="sys.opbrengst_uitleg">Opbrengst: wat de ontladen stroom waard was op het moment van gebruik, min wat het laden kostte.</p>
       </section>
 
-      <section class="card" data-t-aria="bat.gisteren" aria-label="Gisteren">
-        <div class="row">
-          <h2 data-t="bat.gisteren">Gisteren</h2>
-          <b class="c-bat groot" id="g-op">–</b>
-        </div>
+      <section class="card" data-t-aria="sys.over" aria-label="Over je panelen" id="y-records-kaart">
+        <h2 data-t="sys.over">Over je panelen</h2>
         <div class="grid2">
-          <div class="stat"><span data-t="bat.geladen">Geladen</span><b id="g-in">–</b></div>
-          <div class="stat"><span data-t="bat.ontladen">Ontladen</span><b id="g-uit">–</b></div>
-          <div class="stat"><span data-t="bat.verlies">Verlies</span><b id="g-verlies">–</b></div>
-          <div class="stat"><span data-t="bat.cycli">Cycli</span><b id="g-cycli">–</b></div>
+          <div class="stat"><span data-t="sys.sinds_installatie">Sinds installatie</span><b id="r-totaal">–</b></div>
+          <div class="stat"><span data-t="sys.dit_jaar">Dit jaar</span><b id="r-jaar">–</b></div>
+          <div class="stat"><span data-t="sys.beste_dag">Beste dag ooit</span><b id="r-beste">–</b></div>
+          <div class="stat"><span data-t="sys.op">Op</span><b id="r-beste-datum">–</b></div>
+          <div class="stat"><span data-t="sys.beste_paneel">Beste paneel ooit</span><b id="r-paneel">–</b></div>
+          <div class="stat"><span data-t="sys.temperatuur">Temperatuur nu</span><b id="r-temp">–</b></div>
         </div>
-        <p class="note" id="g-uitleg"></p>
-      </section>
-
-      <section class="card list" data-t-aria="bat.dagen" aria-label="Afgelopen dagen" id="b-dagen-kaart">
-        <div id="b-dagen"></div>
-        <div class="blok totaal"><span class="tijd" data-t="bat.samen">Samen</span><span class="bedrag c-bat" id="b-samen">–</span></div>
+        <p class="note" id="r-noot"></p>
       </section>
     </main>
   </section>
@@ -365,11 +378,11 @@
   </section>
 
   <nav class="tabs" data-t-aria="tab.menu" aria-label="Hoofdmenu">
-    <button type="button" data-tab="prijzen"><span class="pill"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></span><span data-t="tab.prijzen">Prijzen</span></button>
     <button type="button" data-tab="historie"><span class="pill"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></span><span data-t="tab.historie">Historie</span></button>
+    <button type="button" data-tab="systeem"><span class="pill"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/><path d="M9 20v-5h6v5"/></svg></span><span data-t="tab.systeem">Systeem</span></button>
     <button type="button" data-tab="nu" class="midden" aria-current="page"><span class="pill"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg></span><span data-t="nu.titel">Nu</span></button>
-    <button type="button" data-tab="batterij"><span class="pill"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="7" width="17" height="10" rx="2"/><path d="M22 11v2"/><path d="M6 10v4M10 10v4"/></svg></span><span data-t="tab.batterij">Batterij</span></button>
     <button type="button" data-tab="status"><span class="pill"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg><i class="stip-melding" id="tab-melding" hidden></i></span><span data-t="tab.status">Status</span></button>
+    <button type="button" data-tab="prijzen"><span class="pill"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></span><span data-t="tab.prijzen">Prijzen</span></button>
   </nav>
 </div>
 <script src="i18n.js"></script>

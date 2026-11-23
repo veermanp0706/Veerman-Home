@@ -23,6 +23,13 @@ CREATE TABLE IF NOT EXISTS hour_import (
     batt_out REAL,
     soc      REAL                  -- gemiddelde laadtoestand in procent
 );
+CREATE TABLE IF NOT EXISTS panel_day (
+    day    TEXT,     -- datum (lokale tijd)
+    serial TEXT,     -- serienummer van de omvormer
+    wh     REAL,     -- opbrengst die dag in Wh
+    bron   TEXT,
+    PRIMARY KEY (day, serial)
+);
 CREATE TABLE IF NOT EXISTS price (
     ts      INTEGER PRIMARY KEY,  -- begin van het uur, epoch-seconden (UTC)
     epex    REAL,                 -- beursprijs in euro per kWh, excl. btw
@@ -150,6 +157,19 @@ class Storage:
                 out[ts + i * 900] = {"zon": (pv or 0) / 4, "huis": (load or 0) / 4, "net": (imp_ or 0) / 4, "terug": (exp or 0) / 4,
                                      "bat_uit": (b_out or 0) / 4, "bat_in": (b_in or 0) / 4, "uur": True}
         return out
+
+    def write_panel_days(self, rows):
+        with self._lock:
+            self._db.executemany("INSERT OR REPLACE INTO panel_day (day, serial, wh, bron) VALUES (?,?,?,?)", rows)
+            self._db.commit()
+
+    def panel_day(self, day):
+        with self._lock:
+            return self._db.execute("SELECT serial, wh FROM panel_day WHERE day = ?", (day,)).fetchall()
+
+    def panel_totals(self):
+        with self._lock:
+            return self._db.execute("SELECT serial, SUM(wh) FROM panel_day GROUP BY serial").fetchall()
 
     def write_import(self, rows):
         with self._lock:
