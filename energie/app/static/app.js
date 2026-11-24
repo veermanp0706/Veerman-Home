@@ -968,16 +968,30 @@ $("m-test").addEventListener("click", async () => {
 
 /* ---------- Navigatie ---------- */
 
-const TABS = ["historie", "systeem", "nu", "status", "prijzen"];
+// Hoofdmenu: Energie · Klimaat · Thuis · Licht · Zonwering. Energie heeft vijf eigen schermen.
+const ENERGIE = ["nu", "historie", "prijzen", "systeem", "status"];
+const HOOFD = ["energie", "klimaat", "thuis", "licht", "zonwering"];
+const TABS = [...ENERGIE, "klimaat", "thuis", "licht", "zonwering"];
+let laatsteEnergie = "nu";
+let vorigScherm = "thuis";
+try { if (ENERGIE.includes(localStorage.getItem("energie"))) laatsteEnergie = localStorage.getItem("energie"); } catch (e) { /* geen opslag */ }
+
+function hoofdVan(naam) {
+  if (ENERGIE.includes(naam) || naam === "advies") return "energie";
+  if (naam === "instellingen") return "instellingen";
+  return naam;
+}
 
 function toon(naam) {
+  if (naam === "energie") naam = laatsteEnergie;
+  if (naam === "instellingen" && tab !== "instellingen") vorigScherm = tab;
   tab = naam;
   for (const s of document.querySelectorAll(".screen")) s.hidden = s.id !== "scherm-" + naam;
-  // Instellingen hoort bij Nu: het menu blijft Nu tonen
-  const actieveTab = naam === "instellingen" || naam === "advies" ? "nu" : naam;
+  const actief = hoofdVan(naam);
   for (const b of document.querySelectorAll(".tabs button")) {
-    if (b.dataset.tab === actieveTab) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current");
+    if (b.dataset.tab === actief) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current");
   }
+  document.querySelectorAll("[data-sub]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.sub === naam)));
   window.scrollTo(0, 0);
   if (naam === "nu" || naam === "systeem") verversNu();
   if (naam === "prijzen") verversPrijzen();
@@ -987,12 +1001,16 @@ function toon(naam) {
   if (naam === "instellingen") { pasTaalToe(); if (!laatsteStatus) verversStatus(); laadMeldingen(); laadAdvies().then(vulAdviesInstellingen); }
   if (naam === "advies") { tekenAdvies(); laadAdvies(true).then(tekenAdvies); }
   if (naam === "nu") tekenAdviesBlok();
-  if (TABS.includes(naam)) { try { localStorage.setItem("tab", naam); } catch (e) { /* geen opslag */ } }
+  if (typeof thuisGetoond === "function") thuisGetoond(naam);
+  if (ENERGIE.includes(naam)) { laatsteEnergie = naam; try { localStorage.setItem("energie", naam); } catch (e) { /* geen opslag */ } }
+  if (TABS.includes(naam)) { try { localStorage.setItem("scherm", naam); } catch (e) { /* geen opslag */ } }
 }
 
 document.querySelectorAll(".tabs button").forEach((b) => b.addEventListener("click", () => toon(b.dataset.tab)));
+document.querySelectorAll("[data-sub]").forEach((b) => b.addEventListener("click", () => toon(b.dataset.sub)));
+document.querySelectorAll(".naar-inst").forEach((b) => b.addEventListener("click", () => toon("instellingen")));
 $("naar-instellingen").addEventListener("click", () => toon("instellingen"));
-$("terug-nu").addEventListener("click", () => toon("nu"));
+$("terug-nu").addEventListener("click", () => toon(vorigScherm || "thuis"));
 document.querySelectorAll("[data-dag]").forEach((b) =>
   b.addEventListener("click", () => {
     dag = b.dataset.dag;
@@ -1005,9 +1023,7 @@ document.addEventListener("keydown", (e) => { if (e.key === "Tab") document.body
 document.addEventListener("pointerdown", () => document.body.classList.remove("toetsenbord"));
 
 pasTaalToe();
-let start = "nu";
-try { start = localStorage.getItem("tab") || "nu";
+let start = "thuis";
+try { start = localStorage.getItem("scherm") || "thuis";
   if (start === "batterij") start = "systeem"; } catch (e) { /* geen opslag */ }
-toon(TABS.includes(start) ? start : "nu");
-// Stip bij Status als er iets aandacht nodig heeft, ook als je op een ander scherm bent
-if (start !== "status") verversStatus();
+// Opstarten gebeurt in thuis.js, zodra ook die schermen klaar zijn

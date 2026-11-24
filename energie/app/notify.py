@@ -34,7 +34,7 @@ TEKST = {
         "advies_laden": "Laad {van}–{tot} tot {limiet}% (nu: {schema}). Scheelt ongeveer €{euro}.",
         "advies_niet": "Vannacht niet van het net laden (nu: {schema}). Scheelt ongeveer €{euro}.",
         "test_titel": "Testmelding",
-        "test": "Meldingen van de Enphase energie-app werken.",
+        "test": "Meldingen van Veerman Home werken.",
     },
     "en": {
         "negatief_titel": "Negative electricity price tomorrow",
@@ -51,7 +51,7 @@ TEKST = {
         "advies_laden": "Charge {van}–{tot} to {limiet}% (now: {schema}). Saves about €{euro}.",
         "advies_niet": "Don't charge from the grid tonight (now: {schema}). Saves about €{euro}.",
         "test_titel": "Test notification",
-        "test": "Notifications from the Enphase energy app work.",
+        "test": "Notifications from Veerman Home work.",
     },
 }
 

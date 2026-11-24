@@ -1,7 +1,7 @@
 {
-  "name": "Energie",
-  "short_name": "Energie",
-  "description": "Zonnepanelen, batterij en stroomprijzen in één oogopslag",
+  "name": "Veerman Home",
+  "short_name": "Thuis",
+  "description": "Energie, klimaat, licht en zonwering in één app",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

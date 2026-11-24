@@ -1,5 +1,17 @@
 # Wijzigingen
 
+## 0.9.0
+
+- De Enphase energie-app heet nu **Veerman Home**: één app voor het hele huis, met een nieuw icoon (glazen huis met de zon erachter).
+- Nieuw menu: Energie · Klimaat · Thuis · Licht · Zonwering. Thuis staat in het midden en is het startscherm.
+- Energie: de vijf bestaande schermen (Nu, Historie, Prijzen, Systeem, Status) staan ongewijzigd achter een schakelaar bovenin.
+- Thuis: binnentemperatuur, stroomprijs en batterij, de zonwering met snelle scènes, de ruimtes, de lampen en de energie van dit moment.
+- Klimaat: temperatuur, vochtigheid en doeltemperatuur per ruimte, met − en + (Tado X via Matter).
+- Licht: Hue-scènes, alle lampen per ruimte aan en uit, helderheid, en "Alles uit".
+- Zonwering: de zeven PowerView-scènes en per zonwering de middelste rail en het product, met een raampje dat de stand laat zien.
+- iPad: liggend staat het menu als zijbalk links en staat de inhoud in kolommen; staand is de app iets breder.
+- Instellingen open je met het tandwiel op Thuis of Energie (en op de iPad onderin de zijbalk).
+
 ## 0.8.0
 
 - Adviseur voor het nachtladen: elke middag, zodra de prijzen van morgen bekend zijn, rekent de app uit wanneer en tot hoever je de batterij vannacht het beste van het net laadt. De app stuurt zelf niets aan; je stelt het in de Enphase-app in.

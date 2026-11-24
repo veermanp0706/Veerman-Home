@@ -37,7 +37,7 @@ STANDAARD = {
 
 
 def _get_json(url, timeout=20):
-    req = urllib.request.Request(url, headers={"User-Agent": "Veerman-enphase"})
+    req = urllib.request.Request(url, headers={"User-Agent": "Veerman-home"})
     with urllib.request.urlopen(req, timeout=timeout) as r:
         return json.loads(r.read())
 

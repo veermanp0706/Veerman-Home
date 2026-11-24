@@ -1,4 +1,4 @@
-"""Enphase energie-app: backend en webserver."""
+"""Veerman Home (voorheen Enphase energie-app): backend en webserver."""
 
 import datetime as dt
 import json
@@ -15,6 +15,7 @@ import ha_import
 import notify
 import panels
 import history
+import home
 import i18n
 import system
 from gateway import DemoGateway, Gateway
@@ -23,7 +24,7 @@ from storage import Storage
 from tariffs import Tariffs
 from timeutil import TZ, hhmm, parse_day
 
-VERSION = "0.8.0"
+VERSION = "0.9.0"
 DATA_DIR = os.environ.get("DATA_DIR", "/data")
 OPTIONS_PATH = os.environ.get("OPTIONS_PATH", os.path.join(DATA_DIR, "options.json"))
 STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
@@ -55,6 +56,7 @@ STATIC = {
     "/index.html": ("index.html", "text/html; charset=utf-8"),
     "/app.js": ("app.js", "text/javascript; charset=utf-8"),
     "/i18n.js": ("i18n.js", "text/javascript; charset=utf-8"),
+    "/thuis.js": ("thuis.js", "text/javascript; charset=utf-8"),
     "/styles.css": ("styles.css", "text/css; charset=utf-8"),
     "/manifest.json": ("manifest.json", "application/manifest+json"),
     "/icon.svg": ("icon.svg", "image/svg+xml"),
@@ -172,6 +174,8 @@ class App:
         self.panels = panels.PanelService(self) if gw else None
         self.notifier = notify.Notifier(self, None if self.demo else ha_token, DATA_DIR)
         self.advisor = advisor.Advisor(self, None if self.demo else ha_token, DATA_DIR) if gw else None
+        # Klimaat, licht en zonwering: via Home Assistant
+        self.home = home.DemoHome() if self.demo else (home.Home(ha_token) if ha_token else None)
 
     def start(self):
         if self.collector:
@@ -260,6 +264,15 @@ class App:
             },
         }
 
+    def api_thuis(self):
+        if not self.home:
+            return {"ok": False, "fout": "geen_toegang"}
+        try:
+            return self.home.overzicht()
+        except Exception as e:
+            log.warning("Home Assistant niet uitgelezen: %s", e)
+            return {"ok": False, "fout": str(e)}
+
     def api_status(self):
         return {
             "versie": VERSION,
@@ -273,7 +286,7 @@ class App:
 
 def make_handler(app):
     class Handler(BaseHTTPRequestHandler):
-        server_version = "VeermanEnphase/" + VERSION
+        server_version = "VeermanHome/" + VERSION
 
         def log_message(self, fmt, *args):
             pass
@@ -322,6 +335,8 @@ def make_handler(app):
                     return self._json(app.system.raw())
                 if path == "/api/status":
                     return self._json(app.api_status())
+                if path == "/api/thuis":
+                    return self._json(app.api_thuis())
             except ValueError as e:
                 return self._json({"fout": str(e)}, 400)
             except Exception as e:
@@ -344,6 +359,13 @@ def make_handler(app):
                     return self._json(app.advisor.bewaar_instellingen(body))
                 if path == "/api/advies/ingesteld" and app.advisor:
                     return self._json(app.advisor.ingesteld(str(body.get("dag")), bool(body.get("gedaan"))))
+                if path == "/api/thuis/actie":
+                    if not app.home:
+                        return self._json({"fout": "geen toegang tot Home Assistant"}, 503)
+                    try:
+                        return self._json(app.home.actie(body))
+                    except home.HAFout as e:
+                        return self._json({"fout": str(e)}, 502)
                 if path == "/api/meldingen/test":
                     return self._json({"ok": app.notifier.test()})
             except ValueError as e:
@@ -361,7 +383,7 @@ def main():
     app = App()
     app.start()
     server = ThreadingHTTPServer(("0.0.0.0", PORT), make_handler(app))
-    log.info("Enphase energie-app %s luistert op poort %d", VERSION, PORT)
+    log.info("Veerman Home %s luistert op poort %d", VERSION, PORT)
     server.serve_forever()
 
 

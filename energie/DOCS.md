@@ -1,13 +1,13 @@
-# Enphase energie-app
+# Veerman Home
 
-Een snelle app voor je Enphase-zonnepanelen en -batterij, met de echte all-in stroomprijs van Vattenfall FlexPrijsStroom.
+Eén app voor je huis: energie (Enphase-zonnepanelen en -batterij, met de echte all-in stroomprijs van Vattenfall FlexPrijsStroom), klimaat, licht en zonwering.
 
 ## Instellen
 
 1. Vul bij **Configuratie** het IP-adres van je IQ Gateway en je JWT-token in.
    Het token maak je aan op entrez.enphaseenergy.com; het is een jaar geldig.
 2. Controleer de tarieven. Bedragen zijn **inclusief btw**, zoals Mijn Vattenfall ze toont.
-3. Start de add-on en open **Energie** in de zijbalk.
+3. Start de app en open **Thuis** in de zijbalk.
 
 ## Wat de app doet
 
@@ -33,3 +33,19 @@ en batterij. Is het Energie-dashboard niet ingesteld, dan zoekt de app de sensor
 de Enphase-integratie. Dit vult alleen de uren aan die de app zelf niet heeft gemeten,
 en wordt elke 6 uur bijgewerkt. De kosten van die periode worden berekend met de
 huidige tarieven uit de instellingen.
+
+## Klimaat, licht en zonwering
+
+Deze schermen lezen en bedienen alles via Home Assistant. Er is niets extra in te stellen;
+de app vindt de apparaten zelf:
+
+- **Klimaat**: alle thermostaten (`climate.*`), zoals Tado X via Matter. De naam is de ruimte
+  uit Home Assistant. Vochtigheid komt van de thermostaat of van een vochtsensor in dezelfde ruimte.
+- **Licht**: alle losse lampen (`light.*`), per ruimte. Hue-ruimtes en -zones worden overgeslagen,
+  Hue-scènes (`scene.*`) staan bovenaan.
+- **Zonwering**: zonweringen met twee rails (`cover.*_top_rail` en `cover.*_bottom_rail`) en de
+  scènes uit de scripts `script.zonwering_*`. De actieve scène staat in de tekst-helper
+  `input_text.zonwering_scene`. Percentages zoals in PowerView: de middelste rail vanaf boven,
+  het product (onderste rail) vanaf onder.
+
+Werken deze schermen niet, controleer dan of **Home Assistant API** aan staat bij de app.
