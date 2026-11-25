@@ -28,6 +28,21 @@ AREA_TEMPLATE = (
 )
 
 
+FLOOR_TEMPLATE = (
+    "{%- set ns = namespace(d=[]) -%}"
+    "{%- for f in floors() -%}"
+    "{%- set ns.d = ns.d + [[floor_name(f), floor_areas(f) | map('area_name') | list]] -%}"
+    "{%- endfor -%}{{ ns.d | tojson }}"
+)
+
+# Weertoestanden van Home Assistant -> icoon in de app
+WEER = {"sunny": "zon", "clear-night": "nacht", "partlycloudy": "halfbewolkt", "cloudy": "bewolkt", "fog": "mist",
+        "rainy": "regen", "pouring": "regen", "lightning": "onweer", "lightning-rainy": "onweer", "hail": "regen",
+        "snowy": "sneeuw", "snowy-rainy": "sneeuw", "windy": "wind", "windy-variant": "wind", "exceptional": "bewolkt"}
+BFT = [1, 6, 12, 20, 29, 39, 50, 62, 75, 89, 103, 118]  # bovengrenzen in km/u
+RICHTING = ["N", "NO", "O", "ZO", "Z", "ZW", "W", "NW"]
+
+
 class HAFout(Exception):
     pass
 
@@ -39,6 +54,7 @@ class Home:
         self._states_t = 0.0
         self._areas = {}
         self._areas_t = 0.0
+        self._floors = []
         self._lock = threading.Lock()
 
     # --- Home Assistant ----------------------------------------------------------
@@ -74,8 +90,25 @@ class Home:
             self._areas = dict(json.loads(tekst or "[]"))
         except Exception as e:
             log.warning("ruimtes niet opgehaald: %s", e)
+        try:
+            tekst = self._http("POST", "/template", {"template": FLOOR_TEMPLATE}).decode("utf-8")
+            self._floors = [{"naam": f, "ruimtes": [r for r in rs if r]} for f, rs in json.loads(tekst or "[]")]
+        except Exception as e:
+            log.warning("verdiepingen niet opgehaald: %s", e)
         self._areas_t = time.time()
         return self._areas
+
+    def floors(self):
+        self.areas()
+        return self._floors
+
+    def _volgorde(self):
+        """Ruimtenaam -> (verdieping-index, ruimte-index, verdiepingnaam), zoals ingericht in Home Assistant."""
+        uit = {}
+        for fi, f in enumerate(self.floors()):
+            for ri, r in enumerate(f["ruimtes"]):
+                uit[r] = (fi, ri, f["naam"])
+        return uit
 
     def call(self, domain, service, data):
         log.info("%s.%s %s", domain, service, data)
@@ -91,10 +124,38 @@ class Home:
         return {
             "ok": True,
             "buiten": self._buiten(st),
+            "weer": self._weer(st),
             "klimaat": self._klimaat(st, ar),
             "licht": self._licht(st, ar),
             "zonwering": self._zonwering(st),
         }
+
+    def _weer(self, st):
+        for eid, s in sorted(st.items()):
+            if not eid.startswith("weather.") or s.get("state") in ("unavailable", "unknown"):
+                continue
+            a = s.get("attributes") or {}
+            wind = self._getal(a.get("wind_speed"))
+            eenheid = (a.get("wind_speed_unit") or "km/h").lower()
+            if wind is not None and eenheid in ("m/s", "ms"):
+                wind *= 3.6
+            elif wind is not None and eenheid in ("mph",):
+                wind *= 1.609
+            elif wind is not None and eenheid in ("kn", "knots"):
+                wind *= 1.852
+            bft = None if wind is None else next((i for i, g in enumerate(BFT) if wind < g), 12)
+            graden = self._getal(a.get("wind_bearing"))
+            return {
+                "toestand": s.get("state"),
+                "icoon": WEER.get(s.get("state"), "bewolkt"),
+                "temp": self._getal(a.get("temperature")),
+                "vocht": self._getal(a.get("humidity")),
+                "wind_bft": bft,
+                "wind_kmh": None if wind is None else round(wind),
+                "wind_graden": graden,
+                "wind_richting": None if graden is None else RICHTING[int((graden % 360) / 45 + 0.5) % 8],
+            }
+        return None
 
     @staticmethod
     def _getal(v):
@@ -140,7 +201,14 @@ class Home:
                 "vocht": vocht,
                 "bereikbaar": s.get("state") not in ("unavailable", "unknown"),
             })
-        out.sort(key=lambda k: (k["naam"] or "").lower())
+        volg = self._volgorde()
+        for k in out:
+            v = volg.get(k["ruimte"])
+            k["verdieping"] = v[2] if v else None
+            k["_v"] = (v[0], v[1]) if v else (99, 0)
+        out.sort(key=lambda k: (k["_v"], (k["naam"] or "").lower()))
+        for k in out:
+            del k["_v"]
         return out
 
     def _licht(self, st, ar):
@@ -185,7 +253,54 @@ class Home:
         for sc in scenes:
             sc["actief"] = nieuwste.get(sc["groep"]) is sc
         scenes.sort(key=lambda x: ((x["groep"] or "~").lower(), x["naam"].lower()))
-        return {"lampen": lampen, "scenes": scenes, "aan": sum(1 for l in lampen if l["aan"]), "totaal": len(lampen)}
+        groepen = self._groepen(st, lampen, scenes)
+        return {"lampen": lampen, "scenes": scenes, "groepen": groepen,
+                "aan": sum(1 for l in lampen if l["aan"]), "totaal": len(lampen),
+                "groepen_aan": sum(1 for g in groepen if g["aan"])}
+
+    def _groepen(self, st, lampen, scenes):
+        """Hue-ruimtes en -zones als groepen; een zone binnen één ruimte komt eronder te staan."""
+        naam_aan = {}
+        for eid, s in st.items():
+            if eid.startswith("light."):
+                a = s.get("attributes") or {}
+                if not a.get("is_hue_group"):
+                    naam_aan[a.get("friendly_name") or eid] = s.get("state") == "on"
+        groepen = []
+        for eid, s in st.items():
+            a = s.get("attributes") or {}
+            if not (eid.startswith("light.") and a.get("is_hue_group")):
+                continue
+            naam = a.get("friendly_name") or eid
+            leden = [l for l in (a.get("lights") or []) if isinstance(l, str)]
+            aan = s.get("state") == "on"
+            bri = a.get("brightness")
+            modi = a.get("supported_color_modes") or []
+            groepen.append({
+                "id": eid, "naam": naam, "soort": a.get("hue_type") or "room", "leden": leden,
+                "lampen": len(leden), "lampen_aan": sum(1 for l in leden if naam_aan.get(l)),
+                "aan": aan, "helderheid": round(bri / 255 * 100) if aan and isinstance(bri, (int, float)) else None,
+                "dimbaar": bool(modi) and modi != ["onoff"],
+                "bereikbaar": s.get("state") not in ("unavailable", "unknown"),
+                "scenes": [{"id": sc["id"], "naam": sc["naam"], "actief": sc["actief"]} for sc in scenes if sc["groep"] == naam],
+                "ouder": None,
+            })
+        kamers = [g for g in groepen if g["soort"] == "room"]
+        for z in groepen:
+            if z["soort"] == "zone" and z["leden"]:
+                for k in kamers:
+                    if set(z["leden"]) <= set(k["leden"]):
+                        z["ouder"] = k["id"]
+                        break
+        volg = self._volgorde()
+        sleutel = lambda g: (volg.get(g["naam"], (99, 0))[:2], g["naam"].lower())
+        uit = []
+        for g in sorted([g for g in groepen if not g["ouder"]], key=sleutel):
+            uit.append(g)
+            uit.extend(sorted([z for z in groepen if z["ouder"] == g["id"]], key=lambda z: z["naam"].lower()))
+        for g in uit:
+            del g["leden"]
+        return uit
 
     def _zonwering(self, st):
         scenes = []
@@ -250,6 +365,9 @@ class Home:
             moet("light.")
             pct = int(min(max(float(body["waarde"]), 1), 100))
             self.call("light", "turn_on", {"entity_id": eid, "brightness_pct": pct})
+        elif soort == "groep":
+            moet("light.")
+            self.call("light", "turn_on" if body.get("aan") else "turn_off", {"entity_id": eid})
         elif soort == "alles_uit":
             aan = [l["id"] for l in self._licht(st, self.areas())["lampen"] if l["aan"]]
             if aan:
@@ -287,26 +405,46 @@ class DemoHome(Home):
             if area:
                 self._areas[eid] = area
 
-        zet("weather.forecast_home", "cloudy", temperature=7.8)
-        for kamer, temp, doel, vocht, actie in [("Woonkamer", 21.0, 21.5, 49, "heating"), ("Keuken", 20.2, 20.0, 55, "idle"),
-                                                ("Slaapkamer", 18.4, 18.0, 51, "idle"), ("Badkamer", 19.6, 20.0, 63, "idle"),
-                                                ("Werkkamer", 19.1, 19.5, 47, "heating")]:
-            k = kamer.lower()
-            zet(f"climate.{k}", "heat", kamer, friendly_name=f"{kamer} thermostaat", current_temperature=temp, temperature=doel,
-                min_temp=5, max_temp=25, target_temp_step=0.5, hvac_action=actie)
-            zet(f"sensor.{k}_vochtigheid", str(vocht), kamer, device_class="humidity", unit_of_measurement="%")
-        for kamer, lampen in [("Woonkamer", [("Plafond", True, 80), ("Leeslamp", True, 45), ("Kast", True, 30)]),
-                              ("Keuken", [("Eiland", False, 0), ("Werkblad", False, 0)]),
-                              ("Slaapkamer", [("Bed links", False, 0), ("Bed rechts", False, 0)]),
-                              ("Hal", [("Plafond", False, 0)]), ("Badkamer", [("Spiegel", False, 0)])]:
-            for naam, aan, pct in lampen:
+        zet("weather.forecast_home", "partlycloudy", temperature=7.8, humidity=86, wind_speed=24.1, wind_speed_unit="km/h", wind_bearing=225)
+        self._floors = [
+            {"naam": "Begane grond", "ruimtes": ["Schuur", "Meterkast", "Keuken", "Eettafel", "Woonkamer", "Achtertuin"]},
+            {"naam": "Eerste verdieping", "ruimtes": ["Badkamer", "Slaapkamer Lotte", "Slaapkamer Sander", "Logeerkamer"]},
+            {"naam": "Tweede verdieping", "ruimtes": ["Waskamer", "Berging", "Slaapkamer Peter & Monique"]},
+            {"naam": "Derde verdieping", "ruimtes": ["Dak"]},
+        ]
+        for i, (kamer, temp, doel, vocht, actie) in enumerate([
+                ("Woonkamer", 21.0, 21.5, 49, "heating"), ("Badkamer", 22.6, 22.0, 63, "idle"),
+                ("Slaapkamer Lotte", 18.2, 18.0, 51, "idle"), ("Slaapkamer Sander", 17.4, 18.0, 52, "heating"),
+                ("Logeerkamer", 14.6, 15.0, 55, "heating"), ("Waskamer", 19.9, 19.0, 58, "idle"),
+                ("Berging", 12.4, 12.0, 61, "idle"), ("Slaapkamer Peter & Monique", 17.8, 18.0, 50, "idle")]):
+            zet(f"climate.thermostaat_{i}", "heat", kamer, friendly_name=f"{kamer} thermostaat", current_temperature=temp,
+                temperature=doel, min_temp=5, max_temp=25, target_temp_step=0.5, hvac_action=actie)
+            zet(f"sensor.vocht_{i}", str(vocht), kamer, device_class="humidity", unit_of_measurement="%")
+        lampen = {"Keuken": [("Spot 1", True, 70), ("Spot 2", True, 70), ("Spot 3", True, 70), ("Keukenraam links", True, 55), ("Keukenraam rechts", True, 55)],
+                  "Eettafel": [("Hanglamp 1", True, 45), ("Hanglamp 2", True, 45), ("Hanglamp 3", True, 45)],
+                  "Woonkamer": [("Plafond", True, 60), ("Leeslamp", True, 60), ("Kast", True, 60), ("Staande lamp", False, 0)],
+                  "Achtertuin": [("Tuinlamp 1", False, 0), ("Tuinlamp 2", False, 0)]}
+        for kamer, ls in lampen.items():
+            namen = []
+            for naam, aan, pct in ls:
                 eid = f"light.{kamer.lower()}_{naam.lower().replace(' ', '_')}"
-                zet(eid, "on" if aan else "off", kamer, friendly_name=f"{kamer} {naam}",
-                    brightness=round(pct * 2.55) if aan else None, supported_color_modes=["color_temp", "xy"])
-            zet(f"light.{kamer.lower()}", "on", kamer, friendly_name=kamer, is_hue_group=True)
-        for groep, namen in [("Woonkamer", ["Ontspannen", "Helder", "Avond", "Film"]), ("Keuken", ["Koken", "Gedimd"])]:
+                volledig = f"{kamer} {naam}"
+                namen.append(volledig)
+                kleur = ["onoff"] if kamer == "Achtertuin" else ["color_temp", "xy"]
+                zet(eid, "on" if aan else "off", kamer, friendly_name=volledig, brightness=round(pct * 2.55) if aan else None, supported_color_modes=kleur)
+            groep_aan = any(a for _, a, _ in ls)
+            pct = max(p for _, _, p in ls)
+            zet(f"light.{kamer.lower()}", "on" if groep_aan else "off", kamer, friendly_name=kamer, is_hue_group=True, hue_type="room",
+                lights=namen, brightness=round(pct * 2.55) if groep_aan else None,
+                supported_color_modes=["onoff"] if kamer == "Achtertuin" else ["color_temp", "xy"])
+        zet("light.keukenraam", "on", "Keuken", friendly_name="Keukenraam", is_hue_group=True, hue_type="zone",
+            lights=["Keuken Keukenraam links", "Keuken Keukenraam rechts"], brightness=round(55 * 2.55), supported_color_modes=["color_temp", "xy"])
+        for groep, namen in [("Woonkamer", ["Ontspannen", "Helder", "Avond", "Film", "Gedimd", "Concentreren"]),
+                             ("Keuken", ["Koken", "Helder", "Gedimd"]), ("Eettafel", ["Diner", "Gezellig", "Helder"]),
+                             ("Keukenraam", ["Sfeer", "Helder"])]:
             for i, naam in enumerate(namen):
-                zet(f"scene.{groep.lower()}_{naam.lower()}", "2026-11-24T18:0%d:00+00:00" % i if (groep, naam) == ("Woonkamer", "Ontspannen") else "unknown",
+                actief = (groep, naam) in (("Woonkamer", "Ontspannen"), ("Eettafel", "Diner"))
+                zet(f"scene.{groep.lower()}_{naam.lower()}", "2026-11-24T18:0%d:00+00:00" % i if actief else "unknown",
                     friendly_name=f"{groep} {naam}", name=naam, group_name=groep)
         for sleutel, naam in [("overdag_1", "Overdag 1"), ("overdag_2", "Overdag 2"), ("avond_1", "Avond 1"), ("avond_2", "Avond 2"),
                               ("iemand_binnen_buiten", "Iemand naar binnen of buiten"), ("alles_open", "Alles open"), ("alles_dicht", "Alles dicht")]:
@@ -325,6 +463,9 @@ class DemoHome(Home):
     def states(self):
         return self._demo
 
+    def floors(self):
+        return self._floors
+
     def call(self, domain, service, data):
         st = self._demo
         ids = data.get("entity_id")
@@ -338,6 +479,11 @@ class DemoHome(Home):
                 s["state"] = "on" if service == "turn_on" else "off"
                 if service == "turn_on":
                     a["brightness"] = round(data.get("brightness_pct", round((a.get("brightness") or 200) / 2.55)) * 2.55)
+                if a.get("is_hue_group"):  # de lampen van de groep gaan mee
+                    for leid, ls in st.items():
+                        if leid.startswith("light.") and ls["attributes"].get("friendly_name") in (a.get("lights") or []):
+                            ls["state"] = s["state"]
+                            ls["attributes"]["brightness"] = a.get("brightness")
             elif domain == "scene":
                 s["state"] = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", time.gmtime())
             elif domain == "cover":

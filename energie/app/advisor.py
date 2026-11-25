@@ -113,7 +113,8 @@ class Advisor(threading.Thread):
             except Exception as e:
                 self.fout = str(e)
                 log.warning("advies niet berekend: %s", e)
-            time.sleep(900)
+            # zolang de prijzen voor vannacht nog niet binnen zijn, vaker kijken
+            time.sleep(300 if (self.plan or {}).get("status") == "wacht_op_prijzen" else 900)
 
     def ververs(self):
         if time.time() - self.zon_t > 3600:
@@ -331,6 +332,7 @@ class Advisor(threading.Thread):
             "uren": [{"uur": hhmm(u["t"]), "zon": round(u["zon"], 3), "verbruik": round(u["verbruik"], 3),
                       "allin": u["allin"], "laden": u["t"] in set(keuze["uren"])} for u in dag_uren],
             "ingesteld": self.dagen.get(dag.isoformat(), {}).get("ingesteld"),
+            "prijzen_sinds": self._sinds(dag),
         }
         with self.lock:
             d = self.dagen.setdefault(dag.isoformat(), {})
@@ -340,6 +342,10 @@ class Advisor(threading.Thread):
             self.dagen = {k: v for k, v in self.dagen.items() if k >= grens}
             self._bewaar()
         return plan
+
+    def _sinds(self, dag):
+        t = getattr(self.app.prices, "binnen", {}).get(dag.isoformat())
+        return dt.datetime.fromtimestamp(t, TZ).strftime("%H:%M") if t else None
 
     # --- achteraf ------------------------------------------------------------------------
 
@@ -395,7 +401,7 @@ class Advisor(threading.Thread):
         n = getattr(self.app, "notifier", None)
         p = self.plan
         nu = dt.datetime.now(TZ)
-        if not (n and p and p.get("status") == "ok" and 15 <= nu.hour < 23):
+        if not (n and p and p.get("status") == "ok" and 12 <= nu.hour < 23):
             return
         if p["gelijk_aan_schema"]:
             return

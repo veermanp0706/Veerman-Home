@@ -52,7 +52,7 @@ def demo_prices(day):
 
 
 class PriceService(threading.Thread):
-    """Houdt de prijzen van vandaag en (vanaf 13:00) morgen bij."""
+    """Houdt de prijzen van vandaag en (vanaf 12:00) morgen bij."""
 
     def __init__(self, store, demo=False):
         super().__init__(daemon=True, name="prijzen")
@@ -60,6 +60,7 @@ class PriceService(threading.Thread):
         self.demo = demo
         self.last_error = None
         self.last_fetch = None
+        self.binnen = {}  # dag (iso) -> tijdstip waarop alle prijzen van die dag binnen waren
 
     def complete(self, day):
         start, end = day_bounds(day)
@@ -68,6 +69,12 @@ class PriceService(threading.Thread):
     def ensure(self, day, log_level=logging.WARNING):
         if self.complete(day):
             return True
+        ok = self._ensure(day, log_level)
+        if ok:
+            self.binnen.setdefault(day.isoformat(), time.time())
+        return ok
+
+    def _ensure(self, day, log_level):
         try:
             items = fetch_energyzero(day)
             source = "EnergyZero"
@@ -91,6 +98,6 @@ class PriceService(threading.Thread):
         while True:
             now = dt.datetime.now(TZ)
             ok = self.ensure(now.date())
-            if now.hour >= 13:
+            if now.hour >= 12:
                 ok = self.ensure(now.date() + dt.timedelta(days=1)) and ok
             time.sleep(900 if ok else 300)

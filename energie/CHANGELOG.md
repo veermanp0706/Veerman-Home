@@ -1,5 +1,18 @@
 # Wijzigingen
 
+## 1.0.0
+
+- Nieuw ontwerp (Ontwerp 2) voor iPhone en iPad, met dezelfde onderdelen op elk scherm: titel boven de oranje band, glazen kaarten, één soort knoppen en schakelaars.
+- Menu onderin: de actieve pagina licht oranje op en staat vetgedrukt. Thuis is alleen oranje als je erop staat.
+- Energie heeft vier moderne tabs bovenaan die blijven staan bij scrollen: Overzicht, Prijzen, Advies en Systeem.
+  - Overzicht (was Nu en Historie): stroomkosten van vandaag en het uurtarief, de energiestromen en daaronder de historie. Tik op een staaf in de grafiek voor de waarden van dat moment; tik ernaast en je ziet weer het geheel.
+  - Advies is een eigen tab en verschijnt zodra de prijzen van morgen binnen zijn (de app kijkt vanaf 12:00 elke 5 minuten), met "prijzen bekend sinds".
+  - Systeem (was Systeem en Status): 9 paneeltegels met status, opbrengst van vandaag, vermogen en temperatuur; de batterij met grafiek en statusgegevens; de gateway. Meters en "Over je panelen" zijn weg; de app-status staat nu bij Instellingen.
+- Thuis: bovenaan Woonkamer, stroomkosten tot nu en batterij. Nieuw: "Nu slim om te doen" (zonwering bij veel zon, goedkoopste uren, batterij-advies), de Hue-groepen als snelle knoppen, zonwerings-scènes, en de ruimtes per verdieping in de kleur van hun temperatuur.
+- Klimaat: weerbericht (temperatuur, weer, luchtvochtigheid, windkracht en -richting) en de ruimtes per verdieping uit Home Assistant, gekleurd van 10° blauw tot 30° rood.
+- Licht: Hue-kamers en -zones (Keuken met Keukenraam, Eettafel, Woonkamer, Achtertuin) met een schakelaar en helderheid van laag tot hoog. Scènes per groep via ✦ in een onderblad.
+- Zonwering: weerbericht in de band.
+
 ## 0.9.0
 
 - De Enphase energie-app heet nu **Veerman Home**: één app voor het hele huis, met een nieuw icoon (glazen huis met de zon erachter).

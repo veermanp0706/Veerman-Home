@@ -14,10 +14,16 @@ Eén app voor je huis: energie (Enphase-zonnepanelen en -batterij, met de echte 
 - Leest de gateway elke paar seconden lokaal uit. Hij verandert niets aan je instellingen.
   Alleen als de live-meting van de gateway uit staat, zet de app die aan, net zoals de Enphase-app doet.
 - Bewaart per minuut een gemiddelde op de Pi (`/data/energie.db`).
-- Haalt elk uur de EPEX-prijzen op bij EnergyZero, voor morgen vanaf 13:00.
+- Haalt elk uur de EPEX-prijzen op bij EnergyZero. De prijzen van morgen zoekt hij vanaf 12:00 elke 5 minuten; het batterij-advies verschijnt zodra ze binnen zijn.
 - Rekent per uur: (beursprijs × 1,21) + inkoopvergoeding + energiebelasting.
 - Teruglevering: tot de saldering stopt even veel waard als afname, min de verkoopvergoeding.
   Daarna de beursprijs zonder btw, met het minimum van 50% tot 2030.
+
+## Thuis, klimaat, licht en zonwering
+
+- **Klimaat**: de thermostaten (Tado X via Matter), per verdieping zoals in Home Assistant onder Ruimtes en Verdiepingen. Het weerbericht komt van de weer-entiteit van Home Assistant.
+- **Licht**: de Hue-kamers en -zones zoals in de Hue-app. Een zone staat onder de kamer waar zijn lampen in zitten. Scènes kies je per groep met ✦.
+- **Zonwering**: de scripts `script.zonwering_*` en de PowerView-rails.
 
 ## Problemen
 
