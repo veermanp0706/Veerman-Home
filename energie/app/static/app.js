@@ -200,35 +200,19 @@ function tekenNu(d) {
   fout.hidden = d.ok || !d.fout;
   fout.textContent = d.fout ? t("nu.gatewayfout", { fout: d.fout }) : "";
 
-  if (d.prijs) {
-    $("prijs-nu").innerHTML = euro(d.prijs.allin) + "<small> /kWh</small>";
-    $("niveau-nu").textContent = niveau(d.prijs.level);
-  } else {
-    $("prijs-nu").innerHTML = "–<small> /kWh</small>";
-    $("niveau-nu").textContent = t("nu.geenprijs");
-  }
-  const nb = $("volgende");
-  if (d.volgende) {
-    nb.hidden = false;
-    const v = d.volgende;
-    const wanneer = (v.morgen ? t("nu.morgen") : "") + `<strong>${v.uur}</strong>`;
-    nb.classList.toggle("goed", v.soort !== "duur_vanaf");
-    $("volgende-tekst").innerHTML = t("nu." + v.soort, { wanneer, prijs: euro(v.allin) });
-  } else {
-    nb.hidden = true;
-  }
+  $("prijs-nu").innerHTML = (d.prijs ? euro(d.prijs.allin) : "–") + "<small> /kWh</small>";
   if (d.vermogen) tekenStromen(d.vermogen, d.interval);
 
   const td = d.vandaag;
   $("t-kosten").textContent = euro(td.kosten, 2);
 
-  // Batterijscherm gebruikt dezelfde gegevens
+  // Batterij op Overzicht
   const soc = d.vermogen ? d.vermogen.laadtoestand : null;
-  $("b-soc").textContent = soc == null ? "–" : Math.round(soc) + "%";
+  $("ob-soc").textContent = soc == null ? "–" : Math.round(soc) + "%";
   if (d.vermogen) {
-    $("y-zon-nu").textContent = t("sys.nu_w", { w: watt(d.vermogen.zon) });
     const b = d.vermogen.batterij;
-    $("b-vermogen").textContent = Math.abs(b) < 15 ? t("bat.rust") : t(b > 0 ? "bat.ontlaadt" : "bat.laadt", { w: watt(b) });
+    $("ob-status").textContent = Math.abs(b) < 15 ? t("bat.rust") : t(b > 0 ? "bat.ontlaadt" : "bat.laadt", { w: watt(b) });
+    $("ob-status").className = "status" + (b < -15 ? "" : " stil");
   }
   return d.interval;
 }
@@ -248,15 +232,11 @@ async function verversNu() {
 /* ---------- Prijzen ---------- */
 
 function tekenPrijzen(d) {
-  const datum = new Date(d.dag + "T12:00:00");
-  const label = datum.toLocaleDateString(locale(), { weekday: "long", day: "numeric", month: "long" });
-  $("prijs-datum").textContent = t("prijs.datum", { datum: label.charAt(0).toUpperCase() + label.slice(1) });
-
   const leeg = !d.uren.length;
   $("p-leeg").hidden = !leeg;
   $("p-leeg").textContent = d.verwacht_rond ? t("prijs.morgen_rond", { tijd: d.verwacht_rond }) : t("prijs.geen");
-  $("p-grafiek").hidden = leeg;
-  $("blokken").hidden = leeg;
+  $("p-mini").hidden = $("p-chart").hidden = leeg;
+  for (const el of document.querySelectorAll("#p-grafiek .axis, #p-grafiek .legend")) el.hidden = leeg;
 
   const s = d.samenvatting;
   $("p-laag").textContent = s ? euro(s.laagste) : "–";
@@ -264,7 +244,7 @@ function tekenPrijzen(d) {
   $("p-gem").textContent = s ? euro(s.gemiddeld) : "–";
   $("p-hoog").textContent = s ? euro(s.hoogste) : "–";
   $("p-hoog-uur").textContent = s ? s.hoogste_uur : "";
-  if (leeg) { $("opbouw").hidden = true; return; }
+  if (leeg) { laatstePrijzen = d; tekenBeste(); return; }
 
   const vals = d.uren.map((h) => h.allin);
   const lo = Math.floor(Math.min(...vals) * 20) / 20;
@@ -288,34 +268,31 @@ function tekenPrijzen(d) {
 
   laatstePrijzen = d;
   tekenBeste();
+  tekenPrijsOverlay();
+}
 
-  const box = $("blokken");
-  box.textContent = "";
-  for (const b of d.blokken) {
-    const rij = document.createElement("div");
-    rij.className = "blok";
-    const bedrag = b.min === b.max ? euro(b.min) : euro(b.min) + "–" + fmtGetal(b.max, 3);
-    rij.innerHTML = `<span class="stip ${b.level}"></span><span class="tijd">${b.van}–${b.tot}</span><span class="lvl">${niveau(b.level)}</span><span class="bedrag">${bedrag}</span>`;
-    box.appendChild(rij);
-  }
-
-  const o = $("opbouw");
-  if (d.is_vandaag && d.nu) {
-    o.hidden = false;
-    const ob = d.nu.opbouw;
-    $("opbouw-titel").textContent = t("prijs.opbouw", { van: d.nu.uur, tot: d.nu.tot });
-    $("o-beurs").textContent = euro(ob.beurs, 3);
-    $("o-inkoop").textContent = euro(ob.inkoop, 3);
-    $("o-eb").textContent = euro(ob.energiebelasting, 3);
-    $("o-totaal").textContent = euro(ob.totaal, 3);
-    const tot = ob.totaal || 1;
-    $("o1").style.width = Math.max(0, (ob.beurs / tot) * 100) + "%";
-    $("o2").style.width = (ob.inkoop / tot) * 100 + "%";
-    $("o3").style.width = (ob.energiebelasting / tot) * 100 + "%";
-    $("o-terug").textContent = t(d.saldering ? "prijs.terug_saldering" : "prijs.terug", { prijs: euro(d.nu.terug) });
-  } else {
-    o.hidden = true;
-  }
+/** Over de prijsstaven: de verwachte zon (gele lijn) en het laadblok van vannacht (groen vlak), als het advies over deze dag gaat. */
+function tekenPrijsOverlay() {
+  const d = laatstePrijzen;
+  const g = $("p-overlay");
+  g.textContent = "";
+  const p = advies && advies.plan;
+  const passend = d && d.uren.length && p && p.status === "ok" && p.uren && p.dag === d.dag;
+  $("p-leg-zon").hidden = $("p-leg-laden").hidden = true;
+  if (!passend) return;
+  const n = d.uren.length, bw = 240 / n;
+  const perUur = new Map(p.uren.map((u) => [u.uur, u]));
+  let laden = false;
+  d.uren.forEach((h, i) => {
+    const u = perUur.get(h.uur);
+    if (u && u.laden) { laden = true; g.appendChild(svg("rect", { x: (i * bw).toFixed(2), y: 0, width: bw.toFixed(2), height: 140, class: "laadvlak" })); }
+  });
+  const max = Math.max(0.2, ...p.uren.map((u) => u.zon));
+  const pts = d.uren.map((h, i) => { const u = perUur.get(h.uur); return u ? `${(i * bw + bw / 2).toFixed(2)},${(136 - (u.zon / max) * 118).toFixed(1)}` : null; }).filter(Boolean);
+  const zon = p.uren.some((u) => u.zon > 0.01);
+  if (zon && pts.length > 1) g.appendChild(svg("polyline", { points: pts.join(" "), class: "zonlijn" }));
+  $("p-leg-zon").hidden = !zon;
+  $("p-leg-laden").hidden = !laden;
 }
 
 let laatstePrijzen = null;
@@ -346,7 +323,7 @@ function tekenBeste() {
   const vanaf = d.is_vandaag ? new Date().getHours() : 0;
   const b = besteBlok(d.uren, blokLengte, vanaf, 24);
   kaart.hidden = !b;
-  $("p-beste-noot").hidden = !b;
+  $("p-leg-beste").hidden = !b;
   if (!b) return;
   const u = parseInt(d.uren[b.i].uur, 10);
   $("p-beste-tijd").textContent = `${uurTekst(u)} – ${uurTekst(u + blokLengte)}`;
@@ -378,6 +355,24 @@ async function verversPrijzen() {
     $("p-leeg").textContent = t("prijs.fout");
   }
   if (tab === "prijzen") prijsTimer = setTimeout(verversPrijzen, 10 * 60 * 1000);
+}
+
+let dagGekozen = false; // eerste keer: open op de dag van het advies
+async function verversPrijsAdvies() {
+  tekenAdvies();
+  await laadAdvies(true);
+  const p = advies && advies.plan;
+  if (!dagGekozen && p && p.status === "ok") {
+    dagGekozen = true;
+    const morgen = new Date(Date.now() + 86400000);
+    const iso = `${morgen.getFullYear()}-${String(morgen.getMonth() + 1).padStart(2, "0")}-${String(morgen.getDate()).padStart(2, "0")}`;
+    if (p.dag === iso && dag !== "morgen") {
+      dag = "morgen";
+      document.querySelectorAll("[data-dag]").forEach((x) => x.setAttribute("aria-pressed", String(x.dataset.dag === dag)));
+    }
+  }
+  tekenAdvies();
+  await verversPrijzen();
 }
 
 /* ---------- Historie ---------- */
@@ -617,16 +612,11 @@ function tekenSysteem(d) {
       el.title = o.reden || (o.serie ? t("status.omvormer", { serie: o.serie }) : "");
       const nu = x.slaapt || o.slaapt ? t("status.slaapt") : x.watt == null ? "–" : watt(x.watt);
       el.innerHTML = `<div class="pkop"><span>${esc(t("status.paneel", { nr: x.nr }))}</span><i class="pstip ${st}" aria-label="${esc(t("status." + (["ok", "let_op", "fout"].includes(st) ? st : "onbekend")))}"></i></div>
-        <b>${x.vandaag_kwh == null ? "–" : fmtGetal(x.vandaag_kwh, 2)}<small> kWh</small></b>
+        <b>${x.vandaag_kwh == null ? "–" : fmtGetal(x.vandaag_kwh, 3)}</b><small class="eenheid">kWh</small>
         <div class="meter"><i style="width:${(r * 100).toFixed(0)}%"></i></div>
         <div class="pvoet"><span>${esc(nu)}</span><span>${x.temp == null ? "" : Math.round(x.temp) + "°"}</span></div>`;
       box.appendChild(el);
     }
-    $("y-zon").innerHTML = p.totaal_kwh == null ? "–" : `${fmtGetal(p.totaal_kwh, 2)}<small> kWh</small>`;
-    $("y-beste").textContent = p.beste_kwh ? t("sys.beste", { kwh: fmtGetal(p.beste_kwh, 3) }) : "";
-    const z = (p.zwak || [])[0];
-    $("y-zwak").hidden = !z;
-    if (z) $("y-zwak-tekst").innerHTML = t("sys.zwak", { nr: z.nr, pct: z.procent });
     $("y-noot").textContent = p.bron === "eigen telling" ? t("sys.eigen_telling") : "";
   } else {
     box.innerHTML = `<p class="note">${esc(t("status.geen_omv"))}</p>`;
@@ -646,6 +636,15 @@ function tekenSysteem(d) {
     $("b-vlak").setAttribute("d", `${lijn} L${xy[xy.length - 1][0]} 78 L${xy[0][0]} 78 Z`);
     $("b-curve").setAttribute("aria-label", t("bat.curve_nu", { pct: Math.round(pts[pts.length - 1].soc) }));
   }
+  const c = advies && advies.instellingen;
+  const vlak = $("b-laadvlak");
+  vlak.textContent = "";
+  $("ob-leg-nacht").hidden = !(c && c.schema_limiet);
+  if (c && c.schema_limiet) {
+    const s0 = c.schema_start, e0 = c.schema_eind > s0 ? c.schema_eind : c.schema_eind + 24;
+    for (let h = s0; h < e0; h++) vlak.appendChild(svg("rect", { x: ((h % 24) / 24 * 316).toFixed(1), y: 2, width: (316 / 24).toFixed(1), height: 76, class: "laadvlak" }));
+    $("ob-nacht-tekst").textContent = t("ov.nachtladen", { van: uurT(c.schema_start), tot: uurT(c.schema_eind) });
+  }
   const n = b.nachtladen;
   const nacht = $("b-nacht");
   if (n.vol_om) { nacht.textContent = t("bat.vol_om", { tijd: n.vol_om }); nacht.className = "status"; }
@@ -656,7 +655,7 @@ function tekenSysteem(d) {
 async function verversSysteem() {
   clearTimeout(sysTimer);
   try { tekenSysteem(await haal("api/systeem")); } catch (e) { /* volgende keer opnieuw */ }
-  if (tab === "systeem") sysTimer = setTimeout(verversSysteem, 60 * 1000);
+  if (tab === "systeem" || tab === "overzicht") sysTimer = setTimeout(verversSysteem, 60 * 1000);
 }
 
 /* ---------- Status ---------- */
@@ -810,7 +809,7 @@ function tekenAdvies() {
   const ok = p && p.status === "ok";
   $("a-leeg").hidden = ok;
   $("a-leeg").textContent = d && d.fout ? t("adv.fout", { fout: d.fout }) : t("adv.volgt_uitleg");
-  for (const id of ["a-grafiek", "a-waarom", "a-stappen"]) $(id).hidden = !ok;
+  $("a-waarom").hidden = !ok;
   $("a-kop").textContent = ok ? adviesKop(p) : t("adv.volgt");
   $("a-nacht").textContent = p ? nachtLabel(p) : "";
   const sinds = $("a-sinds");
@@ -821,31 +820,6 @@ function tekenAdvies() {
   $("a-kwh").textContent = a ? fmtGetal(a.laden_kwh, 1) + " kWh" : "0 kWh";
   $("a-prijs").textContent = a ? euro(a.gem_prijs) : "–";
   $("a-besparing").textContent = p.gelijk_aan_schema ? t("adv.gelijk_kort") : euro2(p.besparing_vs_schema);
-
-  // Grafiek: zon en verbruik per uur, laadblok gemarkeerd
-  const W = 316, H = 110, n = p.uren.length || 24, bw = W / n;
-  const max = Math.max(0.5, ...p.uren.map((u) => Math.max(u.zon, u.verbruik))) * 1.1;
-  const g = $("a-uren");
-  g.textContent = "";
-  p.uren.forEach((u, i) => {
-    if (u.laden) g.appendChild(svg("rect", { x: i * bw, y: 0, width: bw, height: H, class: "laadvlak" }));
-  });
-  p.uren.forEach((u, i) => {
-    const hv = (u.verbruik / max) * H, hz = (u.zon / max) * H;
-    g.appendChild(svg("rect", { x: (i * bw + 1).toFixed(1), y: (H - hv).toFixed(1), width: (bw - 2).toFixed(1), height: hv.toFixed(1), class: "r-verbruik" }));
-    if (hz > 0.3) g.appendChild(svg("rect", { x: (i * bw + bw * 0.25).toFixed(1), y: (H - hz).toFixed(1), width: (bw * 0.5).toFixed(1), height: hz.toFixed(1), class: "r-zon" }));
-  });
-  g.appendChild(svg("line", { x1: 0, x2: W, y1: H, y2: H, class: "as" }));
-  g.setAttribute("aria-label", t("adv.grafiek_aria", { zon: kwh(p.zon_kwh, 1), verbruik: kwh(p.verbruik_kwh, 1) }));
-  $("a-leg-zon").textContent = t("adv.leg_zon", { kwh: fmtGetal(p.zon_kwh, 1) }) + (p.zon_bekend ? "" : " *");
-  $("a-leg-verbruik").textContent = t("adv.leg_verbruik", { kwh: fmtGetal(p.verbruik_kwh, 1) });
-
-  const pr = $("a-prijzen");
-  pr.textContent = "";
-  const vals = p.uren.map((u) => u.allin);
-  const lo = Math.min(...vals), hi = Math.max(...vals) + 0.0001;
-  p.uren.forEach((u, i) => { if (u.laden) pr.appendChild(svg("rect", { x: i * bw, y: 0, width: bw, height: 64, class: "laadvlak" })); });
-  pr.appendChild(svg("polyline", { points: p.uren.map((u, i) => `${(i * bw + bw / 2).toFixed(1)},${(60 - ((u.allin - lo) / (hi - lo)) * 54).toFixed(1)}`).join(" "), class: "prijslijn" }));
 
   // Waarom
   const rij = (k, v, cls = "") => `<dt>${esc(k)}</dt><dd class="${cls}">${esc(v)}</dd>`;
@@ -860,14 +834,8 @@ function tekenAdvies() {
   $("a-uitleg").textContent = !a ? t("adv.uitleg_niet")
     : a.limiet < 100 ? t("adv.uitleg_deels", { limiet: a.limiet }) : t("adv.uitleg_vol");
 
-  // Stappen
-  const st = a
-    ? [t("adv.stap1"), t("adv.stap2", { van: uurT(a.start), tot: uurT(a.eind) }), t("adv.stap3", { limiet: a.limiet })]
-    : [t("adv.stap1"), t("adv.stap_niet")];
-  $("a-stappenlijst").innerHTML = st.map((x) => `<li><span>${x}</span></li>`).join("");
-  $("a-gedaan").disabled = p.gelijk_aan_schema;
-  $("a-status").textContent = p.gelijk_aan_schema ? t("adv.al_goed") : p.ingesteld ? "✓ " + t("adv.is_ingesteld") : "";
   tekenEvaluatie();
+  if (laatstePrijzen) tekenPrijsOverlay();
 }
 
 function tekenEvaluatie() {
@@ -875,20 +843,6 @@ function tekenEvaluatie() {
   $("a-ev-euro").textContent = e && e.besparing_maand != null ? euro2(e.besparing_maand) : "–";
   $("a-ev-zon").textContent = e && e.zon_afwijking != null ? "± " + e.zon_afwijking + "%" : "–";
 }
-
-async function ingesteld(gedaan) {
-  const p = advies && advies.plan;
-  if (!p) return;
-  try {
-    const r = await fetch("api/advies/ingesteld", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ dag: p.dag, gedaan }) });
-    if (r.ok) { advies = await r.json(); adviesT = Date.now(); }
-  } catch (e) { /* later opnieuw */ }
-  tekenAdvies();
-  if (gedaan) vulAdviesInstellingen();
-}
-
-$("a-gedaan").addEventListener("click", () => ingesteld(true));
-$("a-niet").addEventListener("click", () => { ingesteld(false); toon("overzicht"); });
 
 // Instellingen voor het advies
 function vulAdviesInstellingen() {
@@ -970,13 +924,11 @@ $("m-test").addEventListener("click", async () => {
 
 /* ---------- Navigatie ---------- */
 
-// Hoofdmenu: Energie · Klimaat · Thuis · Licht · Zonwering. Energie heeft vier tabbladen.
-const ENERGIE = ["overzicht", "prijzen", "advies", "systeem"];
-const OUD = { nu: "overzicht", historie: "overzicht", status: "systeem", batterij: "systeem" };
-const HOOFD = ["energie", "klimaat", "thuis", "licht", "zonwering"];
-const TABS = [...ENERGIE, "klimaat", "thuis", "licht", "zonwering"];
+// Hoofdmenu: Stroom · Klimaat · Licht · Zonwering · Instellingen. Stroom heeft drie tabbladen.
+const ENERGIE = ["overzicht", "prijzen", "systeem"];
+const OUD = { nu: "overzicht", historie: "overzicht", status: "systeem", batterij: "systeem", advies: "prijzen", thuis: "overzicht" };
+const TABS = [...ENERGIE, "klimaat", "licht", "zonwering", "instellingen"];
 let laatsteEnergie = "overzicht";
-let vorigScherm = "thuis";
 try { const e = localStorage.getItem("energie"); const v = OUD[e] || e; if (ENERGIE.includes(v)) laatsteEnergie = v; } catch (e) { /* geen opslag */ }
 
 function hoofdVan(naam) {
@@ -988,30 +940,26 @@ function hoofdVan(naam) {
 function toon(naam) {
   if (OUD[naam]) naam = OUD[naam];
   if (naam === "energie") naam = laatsteEnergie;
-  if (naam === "instellingen" && tab !== "instellingen") vorigScherm = tab;
   tab = naam;
   for (const s of document.querySelectorAll(".screen")) s.hidden = s.id !== "scherm-" + naam;
   const actief = hoofdVan(naam);
-  for (const b of document.querySelectorAll(".tabs button")) {
+  for (const b of document.querySelectorAll(".tabs [data-tab]")) {
     if (b.dataset.tab === actief) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current");
   }
   document.querySelectorAll("[data-sub]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.sub === naam)));
   window.scrollTo(0, 0);
   if (naam === "overzicht" || naam === "systeem") verversNu();
-  if (naam === "prijzen") verversPrijzen();
-  if (naam === "overzicht") { sluitDetail(); verversHistorie(); }
+  if (naam === "prijzen") verversPrijsAdvies();
+  if (naam === "overzicht") { sluitDetail(); verversHistorie(); verversSysteem(); laadAdvies().then(() => laatsteSysteem && tekenSysteem(laatsteSysteem)); }
   if (naam === "systeem") { verversSysteem(); verversStatus(); }
   if (naam === "instellingen") { pasTaalToe(); if (!laatsteStatus) verversStatus(); laadMeldingen(); laadAdvies().then(vulAdviesInstellingen); }
-  if (naam === "advies") { tekenAdvies(); laadAdvies(true).then(tekenAdvies); }
   if (typeof thuisGetoond === "function") thuisGetoond(naam);
   if (ENERGIE.includes(naam)) { laatsteEnergie = naam; try { localStorage.setItem("energie", naam); } catch (e) { /* geen opslag */ } }
   if (TABS.includes(naam)) { try { localStorage.setItem("scherm", naam); } catch (e) { /* geen opslag */ } }
 }
 
-document.querySelectorAll(".tabs button").forEach((b) => b.addEventListener("click", () => toon(b.dataset.tab)));
+document.querySelectorAll(".tabs [data-tab]").forEach((b) => b.addEventListener("click", () => toon(b.dataset.tab)));
 document.querySelectorAll("[data-sub]").forEach((b) => b.addEventListener("click", () => toon(b.dataset.sub)));
-document.querySelectorAll(".naar-inst").forEach((b) => b.addEventListener("click", () => toon("instellingen")));
-$("terug-nu").addEventListener("click", () => toon(vorigScherm || "thuis"));
 document.querySelectorAll("[data-dag]").forEach((b) =>
   b.addEventListener("click", () => {
     dag = b.dataset.dag;
@@ -1024,7 +972,7 @@ document.addEventListener("keydown", (e) => { if (e.key === "Tab") document.body
 document.addEventListener("pointerdown", () => document.body.classList.remove("toetsenbord"));
 
 pasTaalToe();
-let start = "thuis";
-try { start = localStorage.getItem("scherm") || "thuis";
+let start = "overzicht";
+try { start = localStorage.getItem("scherm") || "overzicht";
   if (OUD[start]) start = OUD[start]; } catch (e) { /* geen opslag */ }
 // Opstarten gebeurt in thuis.js, zodra ook die schermen klaar zijn

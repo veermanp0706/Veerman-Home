@@ -109,15 +109,24 @@ class Advisor(threading.Thread):
             try:
                 self.ververs()
                 self._evalueer()
-                self._melding()
+                # geen pushmelding meer voor het advies: het staat in de app zodra de prijzen binnen zijn
             except Exception as e:
                 self.fout = str(e)
                 log.warning("advies niet berekend: %s", e)
-            # zolang de prijzen voor vannacht nog niet binnen zijn, vaker kijken
-            time.sleep(300 if (self.plan or {}).get("status") == "wacht_op_prijzen" else 900)
+            # zolang de prijzen voor vannacht nog niet binnen zijn vaker kijken; en vlak na middernacht
+            # opnieuw rekenen met de nieuwste weersverwachting
+            time.sleep(self._wacht())
+
+    def _wacht(self):
+        if (self.plan or {}).get("status") == "wacht_op_prijzen":
+            return 300
+        nu = dt.datetime.now(TZ)
+        tot_middernacht = (24 * 60 - (nu.hour * 60 + nu.minute)) * 60 - nu.second + 60
+        return max(60, min(900, tot_middernacht))
 
     def ververs(self):
-        if time.time() - self.zon_t > 3600:
+        nu = dt.datetime.now(TZ)
+        if time.time() - self.zon_t > 3600 or (nu.hour == 0 and nu.minute < 15 and time.time() - self.zon_t > 600):
             self._haal_zon()
         self.plan = self.bereken()
         self.plan_t = time.time()

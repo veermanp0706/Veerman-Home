@@ -23,7 +23,8 @@ Eén app voor je huis: energie (Enphase-zonnepanelen en -batterij, met de echte 
 
 - **Klimaat**: de thermostaten (Tado X via Matter), per verdieping zoals in Home Assistant onder Ruimtes en Verdiepingen. Het weerbericht komt van de weer-entiteit van Home Assistant.
 - **Licht**: de Hue-kamers en -zones zoals in de Hue-app. Een zone staat onder de kamer waar zijn lampen in zitten. Scènes kies je per groep met ✦.
-- **Zonwering**: de scripts `script.zonwering_*` en de PowerView-rails.
+- **Zonwering**: de scripts `script.zonwering_*` en de PowerView-rails. De app leest de standen uit de scripts zelf en herkent zo welke scène actief is.
+- **Weer**: je weer-entiteit (`weather.*`) en de zon (`sun.sun`). Het adres bovenaan stel je in bij Instellingen → Woning; leeg = de naam van je huis in Home Assistant.
 
 ## Problemen
 

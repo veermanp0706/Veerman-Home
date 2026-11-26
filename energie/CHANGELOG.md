@@ -1,5 +1,24 @@
 # Wijzigingen
 
+## 1.1.0
+
+Minder is meer: Ontwerp 3.
+
+- Menu: Stroom · Klimaat · Licht · Zonwering · Instellingen. De pagina Thuis is weg. De app opent op de pagina waar je het laatst was.
+- Energie heet nu **Stroom**, zonder tandwiel. Drie tabs: Overzicht, Prijzen & advies en Systeem. Op de iPad staan ze als submenu onder Stroom in de zijbalk.
+- Overzicht: geen melding meer over wanneer het tarief zakt en geen goedkoop/duur-label. Nieuw: de batterijgrafiek van vandaag, met het nachtlaadblok.
+- Prijzen & advies (was Prijzen en Advies):
+  - het advies voor vannacht staat bovenaan;
+  - één prijsgrafiek voor vandaag en morgen, met de verwachte zon (gele lijn) en het laadblok van vannacht (groen), alles in de legenda;
+  - daaronder Beste moment voor apparaten, Waarom dit advies en Hoe goed is het advies;
+  - het blok met de stappen voor de Enphase-app is weg, net als de lijst met prijsblokken en de opbouw van de prijs.
+- Het advies verschijnt zodra de prijzen van morgen binnen zijn en wordt om 00:00 nog eens doorgerekend met de nieuwste weersverwachting. Er komt geen pushmelding meer voor het advies.
+- Systeem: alleen de status in het oranje blok; paneeltegels met opbrengst in 3 decimalen, zonder de teksten over het zwakste en beste paneel; de batterijgrafiek staat nu op Overzicht.
+- Klimaat en Zonwering: het weer als lucht op de achtergrond van het blok, met het adres van de woning, zon op en zon onder, luchtvochtigheid en wind. Het adres stel je in bij Instellingen → Woning.
+- Klimaat: de kleuren lopen nu van blauw bij 10° tot rood bij 25°.
+- Zonwering: de app herkent aan de stand van de gordijnen welke scène actief is (binnen 3%), ook als iemand ze met de hand of de PowerView-app heeft verzet. Anders staat er "Eigen stand". Geen vinkje meer, alleen uitlichten.
+- Kopjes van blokken zijn groter dan de tekst eronder.
+
 ## 1.0.0
 
 - Nieuw ontwerp (Ontwerp 2) voor iPhone en iPad, met dezelfde onderdelen op elk scherm: titel boven de oranje band, glazen kaarten, één soort knoppen en schakelaars.

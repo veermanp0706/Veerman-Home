@@ -41,15 +41,55 @@ WEER = {"sunny": "zon", "clear-night": "nacht", "partlycloudy": "halfbewolkt", "
         "snowy": "sneeuw", "snowy-rainy": "sneeuw", "windy": "wind", "windy-variant": "wind", "exceptional": "bewolkt"}
 BFT = [1, 6, 12, 20, 29, 39, 50, 62, 75, 89, 103, 118]  # bovengrenzen in km/u
 RICHTING = ["N", "NO", "O", "ZO", "Z", "ZW", "W", "NW"]
+MARGE = 3  # procent: binnen deze marge telt een stand als gelijk aan een scène
+STAND_VAR = re.compile(r"(links|rechts)_(product|midden)")
 
 
 class HAFout(Exception):
     pass
 
 
+def _stappen(seq):
+    """Alle losse stappen in een script, ook binnen parallel/sequence/choose."""
+    if isinstance(seq, dict):
+        seq = [seq]
+    for stap in seq or []:
+        if not isinstance(stap, dict):
+            continue
+        yield stap
+        for sleutel in ("parallel", "sequence", "then", "else", "default"):
+            if sleutel in stap:
+                yield from _stappen(stap[sleutel])
+        for keuze in stap.get("choose") or []:
+            yield from _stappen((keuze or {}).get("sequence"))
+
+
+def _cover_stap(stap):
+    if (stap.get("action") or stap.get("service")) != "cover.set_cover_position":
+        return None, None
+    doel = stap.get("target") or {}
+    eid = doel.get("entity_id") or stap.get("entity_id") or (stap.get("data") or {}).get("entity_id")
+    if isinstance(eid, list):
+        eid = eid[0] if len(eid) == 1 else None
+    pos = (stap.get("data") or {}).get("position")
+    if isinstance(pos, str) and pos.strip().isdigit():
+        pos = int(pos)
+    return eid, pos
+
+
 class Home:
-    def __init__(self, token):
+    def __init__(self, token, data_dir=None):
         self.token = token
+        self._pad = os.path.join(data_dir, "thuis.json") if data_dir else None
+        self.cfg = {"adres": ""}
+        try:
+            with open(self._pad) as f:
+                self.cfg.update(json.load(f))
+        except Exception:
+            pass
+        self._locatie = None
+        self._standen = {}
+        self._standen_t = 0.0
         self._states = None
         self._states_t = 0.0
         self._areas = {}
@@ -116,6 +156,25 @@ class Home:
         with self._lock:
             self._states_t = 0  # volgende keer vers ophalen
 
+    # --- instellingen --------------------------------------------------------------
+
+    def bewaar(self, nieuw):
+        if "adres" in nieuw:
+            self.cfg["adres"] = str(nieuw.get("adres") or "").strip()[:80]
+        if self._pad:
+            with open(self._pad, "w") as f:
+                json.dump(self.cfg, f)
+        return {"adres": self.cfg["adres"], "locatie": self._locatienaam()}
+
+    def _locatienaam(self):
+        """Naam van het huis uit Home Assistant, als er geen adres is ingevuld."""
+        if self._locatie is None:
+            try:
+                self._locatie = json.loads(self._http("GET", "/config")).get("location_name") or ""
+            except Exception:
+                self._locatie = ""
+        return self._locatie
+
     # --- overzicht ---------------------------------------------------------------
 
     def overzicht(self):
@@ -123,6 +182,9 @@ class Home:
         ar = self.areas()
         return {
             "ok": True,
+            "adres": self.cfg.get("adres") or self._locatienaam(),
+            "adres_eigen": self.cfg.get("adres", ""),
+            "zon": self._zon(st),
             "buiten": self._buiten(st),
             "weer": self._weer(st),
             "klimaat": self._klimaat(st, ar),
@@ -156,6 +218,12 @@ class Home:
                 "wind_richting": None if graden is None else RICHTING[int((graden % 360) / 45 + 0.5) % 8],
             }
         return None
+
+    @staticmethod
+    def _zon(st):
+        """Zon op en zon onder uit sun.sun (tijdstippen in UTC, de app zet ze om naar de eigen tijd)."""
+        a = (st.get("sun.sun") or {}).get("attributes") or {}
+        return {"op": a.get("next_rising"), "onder": a.get("next_setting")} if a.get("next_rising") else None
 
     @staticmethod
     def _getal(v):
@@ -315,6 +383,24 @@ class Home:
         scenes.sort(key=volgorde)
         helper = st.get(SCENE_HELPER)
         actief = helper.get("state") if helper and helper.get("state") not in ("unknown", "unavailable", "") else None
+        herkend = False
+        bezig = next((sc for sc in scenes if sc["bezig"]), None)
+        standen = self._scene_standen([sc["id"] for sc in scenes])
+        if bezig:
+            actief = bezig["naam"]
+        elif standen:
+            # welke scène past bij de stand van de gordijnen nu? (iemand kan ze met de hand of de PowerView-app hebben verzet)
+            pos = {eid: self._getal((s.get("attributes") or {}).get("current_position")) for eid, s in st.items() if RAIL.match(eid)}
+            beste = None
+            for sc in scenes:
+                doel = standen.get(sc["id"])
+                if not doel:
+                    continue
+                if all(pos.get(eid) is not None and abs(pos[eid] - p) <= MARGE for eid, p in doel.items()):
+                    if beste is None or len(doel) > len(standen[beste["id"]]):
+                        beste = sc
+            actief = beste["naam"] if beste else None
+            herkend = beste is not None
 
         paren = {}
         for eid, s in st.items():
@@ -339,7 +425,52 @@ class Home:
                 "rail": None if p_boven is None else round(100 - p_boven),
                 "bereikbaar": all(s and s.get("state") not in ("unavailable", "unknown") for s in (onder, boven)),
             })
-        return {"scenes": scenes, "actief": actief, "gordijnen": gordijnen, "helper": helper is not None}
+        return {"scenes": scenes, "actief": actief, "herkend": herkend, "kan_herkennen": bool(standen),
+                "gordijnen": gordijnen, "helper": helper is not None}
+
+    def _script_config(self, obj):
+        return json.loads(self._http("GET", f"/config/script/config/{obj}") or b"{}")
+
+    def _scene_standen(self, ids):
+        """Per zonwering-script de stand die het instelt: {script: {cover-entiteit: positie in Home Assistant}}.
+        Gelezen uit de scripts zelf, zodat een gewijzigde scène vanzelf meekomt. Eens per 10 minuten."""
+        if time.time() - self._standen_t < 600:
+            return self._standen
+        self._standen_t = time.time()
+        try:
+            zet = self._script_config("zonwering_zet")
+        except Exception as e:
+            log.info("scènes niet herkenbaar (script-config niet leesbaar): %s", e)
+            self._standen = {}
+            return self._standen
+        var = {}  # links_product -> cover.x_bottom_rail
+        for stap in _stappen(zet.get("sequence")):
+            eid, pos = _cover_stap(stap)
+            if eid and isinstance(pos, str):
+                m = STAND_VAR.search(pos)
+                if m:
+                    var[m.group(0)] = eid
+        uit = {}
+        for sid in ids:
+            try:
+                cfg = self._script_config(sid.split(".", 1)[1])
+            except Exception:
+                continue
+            doel = {}
+            for stap in _stappen(cfg.get("sequence")):
+                actie = stap.get("action") or stap.get("service")
+                if actie == "script.zonwering_zet":
+                    for k, v in (stap.get("data") or {}).items():
+                        if k in var and isinstance(v, (int, float)):
+                            # product telt vanaf onder (zoals HA); de middelste rail telt PowerView vanaf boven
+                            doel[var[k]] = v if k.endswith("product") else 100 - v
+                eid, pos = _cover_stap(stap)
+                if eid and isinstance(pos, (int, float)):
+                    doel[eid] = pos
+            if doel:
+                uit[sid] = doel
+        self._standen = uit
+        return uit
 
     # --- acties ------------------------------------------------------------------
 
@@ -396,6 +527,7 @@ class DemoHome(Home):
 
     def __init__(self):
         super().__init__(token=None)
+        self._locatie = "Thuis"
         self._areas = {}
         self._areas_t = time.time() + 10 ** 9
         st = {}
@@ -405,6 +537,7 @@ class DemoHome(Home):
             if area:
                 self._areas[eid] = area
 
+        zet("sun.sun", "above_horizon", next_rising="2026-11-27T07:24:00+00:00", next_setting="2026-11-26T15:37:00+00:00")
         zet("weather.forecast_home", "partlycloudy", temperature=7.8, humidity=86, wind_speed=24.1, wind_speed_unit="km/h", wind_bearing=225)
         self._floors = [
             {"naam": "Begane grond", "ruimtes": ["Schuur", "Meterkast", "Keuken", "Eettafel", "Woonkamer", "Achtertuin"]},
@@ -462,6 +595,18 @@ class DemoHome(Home):
 
     def states(self):
         return self._demo
+
+    def _script_config(self, obj):
+        if obj == "zonwering_zet":
+            return {"sequence": [{"parallel": [
+                {"action": "cover.set_cover_position", "target": {"entity_id": f"cover.{code}_{rail}_rail"},
+                 "data": {"position": ("{{ %s_product }}" if rail == "bottom" else "{{ 100 - (%s_midden | int) }}") % kant}}
+                for rail in ("bottom", "top")]} for code, kant in (("du1_b95e", "links"), ("du1_beb4", "rechts"))]}
+        lp, lr, rp, rr = self._scenes[obj[len("zonwering_"):]]
+        if rp is None:
+            return {"sequence": [{"parallel": [{"action": "cover.set_cover_position", "target": {"entity_id": "cover.du1_b95e_top_rail"}, "data": {"position": 100 - lr}},
+                                               {"action": "cover.set_cover_position", "target": {"entity_id": "cover.du1_b95e_bottom_rail"}, "data": {"position": lp}}]}]}
+        return {"sequence": [{"action": "script.zonwering_zet", "data": {"links_product": lp, "links_midden": lr, "rechts_product": rp, "rechts_midden": rr}}]}
 
     def floors(self):
         return self._floors

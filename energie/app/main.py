@@ -24,7 +24,7 @@ from storage import Storage
 from tariffs import Tariffs
 from timeutil import TZ, hhmm, parse_day
 
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 DATA_DIR = os.environ.get("DATA_DIR", "/data")
 OPTIONS_PATH = os.environ.get("OPTIONS_PATH", os.path.join(DATA_DIR, "options.json"))
 STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
@@ -175,7 +175,7 @@ class App:
         self.notifier = notify.Notifier(self, None if self.demo else ha_token, DATA_DIR)
         self.advisor = advisor.Advisor(self, None if self.demo else ha_token, DATA_DIR) if gw else None
         # Klimaat, licht en zonwering: via Home Assistant
-        self.home = home.DemoHome() if self.demo else (home.Home(ha_token) if ha_token else None)
+        self.home = home.DemoHome() if self.demo else (home.Home(ha_token, DATA_DIR) if ha_token else None)
 
     def start(self):
         if self.collector:
@@ -359,6 +359,8 @@ def make_handler(app):
                     return self._json(app.advisor.bewaar_instellingen(body))
                 if path == "/api/advies/ingesteld" and app.advisor:
                     return self._json(app.advisor.ingesteld(str(body.get("dag")), bool(body.get("gedaan"))))
+                if path == "/api/thuis/instellingen" and app.home:
+                    return self._json(app.home.bewaar(body))
                 if path == "/api/thuis/actie":
                     if not app.home:
                         return self._json({"fout": "geen toegang tot Home Assistant"}, 503)

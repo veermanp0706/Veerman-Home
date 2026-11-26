@@ -213,7 +213,7 @@ class Notifier(threading.Thread):
         geld = lambda v: f"{v:.3f}".replace(".", ",") if self.cfg.get("taal") == "nl" else f"{v:.3f}"
 
         # Prijzen van morgen
-        if nu.hour >= 13 and self.app.prices.complete(morgen):
+        if nu.hour >= 12 and self.app.prices.complete(morgen):
             dag = calc.price_day(self.app.store, self.app.tariffs, morgen)
             uren = [(h["t"], h["allin"]) for h in dag]
             beurs = {h["t"]: h["epex"] for h in dag}
@@ -224,7 +224,7 @@ class Notifier(threading.Thread):
                     negatief = any(beurs[ts] < 0 for ts, _ in laag)
                     self._eenmalig("laag:" + morgen.isoformat(), t["negatief_titel" if negatief else "laag_titel"],
                                    t["laag"].format(van=_hhmm(laag[0][0]), tot=_hhmm(laag[-1][0] + 3600), prijs=geld(p_min), uur=_hhmm(ts_min)))
-            if self.cfg.get("morgen") and nu.hour >= 14 and uren:
+            if self.cfg.get("morgen") and uren:
                 b = beste_blok(uren, 2)
                 if b:
                     self._eenmalig("morgen:" + morgen.isoformat(), t["morgen_titel"],

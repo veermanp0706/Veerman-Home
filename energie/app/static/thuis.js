@@ -1,11 +1,10 @@
 "use strict";
-/* Thuis, Klimaat, Licht en Zonwering: alles via Home Assistant (api/thuis). */
+/* Klimaat, Licht en Zonwering: alles via Home Assistant (api/thuis). */
 
-const THUIS_TABS = ["thuis", "klimaat", "licht", "zonwering"];
+const THUIS_TABS = ["klimaat", "licht", "zonwering"];
 let thuisData = null;
 let nuData = null;
 let thuisTimer = null;
-let prijsVandaag = null, prijsVandaagT = 0;
 const wachtTemp = {};   // id -> doeltemperatuur die nog verstuurd wordt
 const wachtRail = {};   // entity_id -> stand (PowerView-percentage) die nog verstuurd wordt
 const wachtGroep = {};  // id -> {aan, helderheid} die nog verstuurd wordt
@@ -32,17 +31,28 @@ function thuisGetoond(naam) {
   if (naam !== "licht") sluitSheet();
   if (THUIS_TABS.includes(naam)) { tekenThuisTab(); verversThuis(); }
   else clearTimeout(thuisTimer);
-  if (naam === "thuis") { laadPrijsVandaag(); laadAdvies().then(() => tab === "thuis" && tekenThuis()); }
+  if (naam === "instellingen") vulAdres();
 }
 
-async function laadPrijsVandaag() {
-  if (prijsVandaag && Date.now() - prijsVandaagT < 15 * 60 * 1000) return;
-  try { prijsVandaag = await haal("api/prices?dag=vandaag"); prijsVandaagT = Date.now(); if (tab === "thuis") tekenThuis(); } catch (e) { /* later */ }
+/* Adres van de woning (Instellingen → Woning) */
+async function vulAdres() {
+  try {
+    const d = thuisData && thuisData.ok ? thuisData : await haal("api/thuis");
+    if (!d.ok) return;
+    const veld = $("i-adres");
+    if (document.activeElement !== veld) veld.value = d.adres_eigen || "";
+    veld.placeholder = d.adres || "";
+  } catch (e) { /* later */ }
 }
+$("i-adres").addEventListener("change", async (e) => {
+  try {
+    await fetch("api/thuis/instellingen", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ adres: e.target.value }) });
+    thuisData = null;
+  } catch (err) { melding(t("th.actie_mis", { fout: err.message })); }
+});
 
 function tekenThuisTab() {
   if (schuiftNu) return;
-  if (tab === "thuis") tekenThuis();
   if (tab === "klimaat") tekenKlimaat();
   if (tab === "licht") tekenLicht();
   if (tab === "zonwering") tekenZonwering();
@@ -85,47 +95,78 @@ function melding(tekst) {
 
 const PIJL_OP = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m18 15-6-6-6 6"/></svg>';
 const PIJL_NEER = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
+const INFO = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>';
 const VINK = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>';
 const LAMP = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.3h6c0-1 .4-1.8 1-2.3A7 7 0 0 0 12 2z"/></svg>';
 const STER = '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l1.8 6.2L20 10l-6.2 1.8L12 18l-1.8-6.2L4 10l6.2-1.8z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/></svg>';
 
-const WEER_SVG = {
-  zon: '<circle cx="24" cy="24" r="9" fill="#FFC23D"/><g stroke="#FFC23D" stroke-width="3" stroke-linecap="round"><path d="M24 5v5M24 38v5M5 24h5M38 24h5M10.6 10.6l3.5 3.5M33.9 33.9l3.5 3.5M10.6 37.4l3.5-3.5M33.9 14.1l3.5-3.5"/></g>',
-  nacht: '<path d="M30 8a15 15 0 1 0 10 26A17 17 0 0 1 30 8z" fill="#F3E7DA"/>',
-  halfbewolkt: '<circle cx="18" cy="17" r="8" fill="#FFC23D"/><g stroke="#FFC23D" stroke-width="2.6" stroke-linecap="round"><path d="M18 3v3M5 17h3M8.5 7.5l2 2M27.5 7.5l-2 2"/></g><path d="M15 40h20a8 8 0 0 0 0-16 11 11 0 0 0-20.5 3A6.5 6.5 0 0 0 15 40z" fill="#F3E7DA"/>',
-  bewolkt: '<path d="M13 38h22a9 9 0 0 0 0-18 12 12 0 0 0-22.6 3.4A7.3 7.3 0 0 0 13 38z" fill="#F3E7DA"/>',
-  mist: '<g stroke="#F3E7DA" stroke-width="3.2" stroke-linecap="round"><path d="M8 16h32M12 24h28M8 32h32M14 40h20"/></g>',
-  regen: '<path d="M13 30h22a8 8 0 0 0 0-16 11 11 0 0 0-20.7 3A6.5 6.5 0 0 0 13 30z" fill="#F3E7DA"/><g stroke="#8DB8EE" stroke-width="3" stroke-linecap="round"><path d="M16 35l-2 6M24 35l-2 6M32 35l-2 6"/></g>',
-  onweer: '<path d="M13 28h22a8 8 0 0 0 0-16 11 11 0 0 0-20.7 3A6.5 6.5 0 0 0 13 28z" fill="#F3E7DA"/><path d="M25 30l-6 9h5l-2 7 8-10h-5l3-6z" fill="#FFC23D"/>',
-  sneeuw: '<path d="M13 30h22a8 8 0 0 0 0-16 11 11 0 0 0-20.7 3A6.5 6.5 0 0 0 13 30z" fill="#F3E7DA"/><g fill="#F3E7DA"><circle cx="16" cy="38" r="2.2"/><circle cx="24" cy="41" r="2.2"/><circle cx="32" cy="38" r="2.2"/></g>',
-  wind: '<g fill="none" stroke="#F3E7DA" stroke-width="3.2" stroke-linecap="round"><path d="M6 18h24a5 5 0 1 0-5-5M6 26h32a5 5 0 1 1-5 5M6 34h16"/></g>',
-};
-const weerIcoon = (naam, maat = 48) => `<svg class="weer-icoon" width="${maat}" height="${maat}" viewBox="0 0 48 48" aria-hidden="true">${WEER_SVG[naam] || WEER_SVG.bewolkt}</svg>`;
 
-/** Weerbericht in de oranje band (Klimaat en Zonwering). */
-function tekenWeer(id) {
-  const el = $(id);
-  const w = thuisData && thuisData.ok ? thuisData.weer : null;
-  if (!w) {
-    el.innerHTML = `<div class="weer-kop"><div class="stack"><span class="sub">${esc(t("weer.buiten"))}</span><span class="hero">${thuisData && thuisData.ok ? graden(thuisData.buiten) : "–"}</span></div></div>`;
-    return;
-  }
-  const pijl = w.wind_graden == null ? "" : `<svg class="windpijl" width="16" height="16" viewBox="0 0 24 24" style="transform:rotate(${(w.wind_graden + 180) % 360}deg)" aria-hidden="true"><path d="M12 3l6 15-6-4-6 4z" fill="currentColor"/></svg>`;
-  el.innerHTML = `<div class="weer-kop">
-      ${weerIcoon(w.icoon, 60)}
-      <div class="stack groei"><span class="sub">${esc(t("weer.buiten"))}</span><span class="hero">${graden(w.temp)}</span><span class="weer-toestand">${esc(((x) => (x.startsWith("weer.") ? w.toestand : x))(t("weer." + w.toestand)))}</span></div>
-    </div>
-    <div class="tiles twee">
-      <div class="tile"><span>${esc(t("weer.vocht"))}</span><b>${procent(w.vocht)}</b><span>${esc(t("weer.luchtvochtigheid"))}</span></div>
-      <div class="tile"><span>${esc(t("weer.wind"))}</span><b>${w.wind_bft == null ? "–" : w.wind_bft + " Bft"}</b><span class="wind-r">${pijl}${esc(w.wind_richting || "")}${w.wind_kmh != null ? " · " + w.wind_kmh + " km/u" : ""}</span></div>
-    </div>`;
+/** Weerbericht met het weer als achtergrond (Klimaat en Zonwering). */
+const LUCHT = {
+  zon: ["#2F7FD8", "#7FB8F0", "#FFD28A"], halfbewolkt: ["#4F86C9", "#9EC3E6", "#F7C98B"], bewolkt: ["#6F829B", "#A9B6C6", "#D9C9B2"],
+  mist: ["#8D97A3", "#B9C0C8", "#D8D2C8"], regen: ["#56657A", "#8E9AAB", "#B9B2A6"], onweer: ["#3B4252", "#646C80", "#9A8F86"],
+  sneeuw: ["#8EA3BD", "#C9D5E3", "#EFEDE8"], wind: ["#5E86B5", "#A3BCD6", "#E5CFAE"], nacht: ["#101B3A", "#2A3A6B", "#5A4A6A"],
+};
+function weerAchtergrond(soort) {
+  const c = LUCHT[soort] || LUCHT.bewolkt;
+  const wolk = (x, y, sc, o, kleur = "#FFFFFF") => `<g transform="translate(${x} ${y}) scale(${sc})" fill="${kleur}" fill-opacity="${o}"><ellipse cx="0" cy="20" rx="70" ry="22"/><circle cx="-24" cy="6" r="26"/><circle cx="14" cy="-4" r="34"/><circle cx="46" cy="12" r="22"/></g>`;
+  const zon = '<circle cx="330" cy="62" r="62" fill="#FFE08A" fill-opacity=".28"/><circle cx="330" cy="62" r="34" fill="#FFD24A"/>';
+  const regen = '<g stroke="#DDE6F2" stroke-opacity=".7" stroke-width="2.4" stroke-linecap="round">' + Array.from({ length: 18 }, (_, k) => `<path d="M${30 + k * 22} ${110 + (k % 3) * 8}l-8 18"/>`).join("") + "</g>";
+  const sterren = [[40, 30], [90, 70], [150, 24], [200, 90], [240, 40], [370, 110], [120, 120], [60, 150], [400, 40], [330, 160]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="1.4" fill="#fff" fill-opacity=".8"/>`).join("");
+  const binnen = {
+    zon: zon + wolk(230, 150, 0.55, 0.35),
+    halfbewolkt: zon + wolk(280, 96, 1, 0.95) + wolk(200, 36, 0.55, 0.5) + wolk(400, 150, 0.8, 0.7),
+    bewolkt: wolk(90, 60, 1.1, 0.75, "#EEF1F5") + wolk(300, 80, 1.3, 0.85, "#E3E8EE") + wolk(200, 140, 1, 0.6, "#F4F6F8"),
+    mist: '<g fill="#FFFFFF" fill-opacity=".35">' + [60, 100, 140, 180].map((y) => `<rect x="0" y="${y}" width="420" height="16" rx="8"/>`).join("") + "</g>",
+    regen: wolk(90, 50, 1.1, 0.55, "#D7DCE3") + wolk(300, 70, 1.2, 0.7, "#C4CAD3") + regen,
+    onweer: wolk(100, 50, 1.2, 0.6, "#9AA2B1") + wolk(300, 60, 1.3, 0.7, "#8A92A2") + '<path d="M250 110l-18 34h16l-8 30 30-42h-16l10-22z" fill="#FFD24A"/>',
+    sneeuw: wolk(100, 50, 1.1, 0.8) + wolk(300, 60, 1.2, 0.85) + '<g fill="#fff">' + Array.from({ length: 16 }, (_, k) => `<circle cx="${25 + k * 25}" cy="${120 + (k % 4) * 14}" r="3"/>`).join("") + "</g>",
+    wind: wolk(120, 60, 0.9, 0.6) + '<g fill="none" stroke="#fff" stroke-opacity=".6" stroke-width="4" stroke-linecap="round"><path d="M40 120h200a20 20 0 1 0-20-20M60 150h260a20 20 0 1 1-20 20"/></g>',
+    nacht: sterren + '<circle cx="330" cy="58" r="26" fill="#F3EEDC"/><circle cx="342" cy="50" r="24" fill="#2A3A6B"/>',
+  }[soort] || "";
+  // De lucht zelf is de achtergrond van het blok; zon en wolken staan rechts, op ware grootte
+  return `<svg class="weer-lucht" aria-hidden="true" viewBox="0 0 420 300" preserveAspectRatio="xMaxYMin meet">${binnen}</svg>`;
 }
 
-/** Kleur bij een temperatuur: 10° blauw → 30° rood (zelfde stappen als het ontwerp). */
-const TEMP_STOPS = [[10, [47, 111, 214]], [15, [141, 184, 238]], [19.5, [243, 231, 218]], [24, [242, 163, 107]], [30, [217, 68, 63]]];
+const tijdVan = (iso) => (iso ? new Date(iso).toLocaleTimeString(locale(), { hour: "2-digit", minute: "2-digit" }) : "–");
+function dagVan(iso) {
+  if (!iso) return "";
+  const d = new Date(iso), nu = new Date();
+  return d.toDateString() === nu.toDateString() ? t("weer.vandaag") : t("weer.morgen");
+}
+
+function tekenWeer(id) {
+  const el = $(id);
+  const d = thuisData && thuisData.ok ? thuisData : null;
+  const w = d && d.weer;
+  const soort = w ? w.icoon : "bewolkt";
+  const tegel = (icoon, label, waarde, sub) => `<div class="wtegel"><span class="wl">${icoon}${esc(label)}</span><b>${waarde}</b><span class="wl">${sub}</span></div>`;
+  const op = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4 18h16M7 14a5 5 0 0 1 10 0M12 4v4M12 4l-2 2M12 4l2 2"/></svg>';
+  const onder = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4 18h16M7 14a5 5 0 0 1 10 0M12 4v4M12 8l-2-2M12 8l2-2"/></svg>';
+  const druppel = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/></svg>';
+  const windI = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M3 8h10a3 3 0 1 0-3-3M3 12h15a3 3 0 1 1-3 3M3 16h7"/></svg>';
+  const pijl = w && w.wind_graden != null ? `<svg class="windpijl" width="11" height="11" viewBox="0 0 24 24" style="transform:rotate(${(w.wind_graden + 180) % 360}deg)" aria-hidden="true"><path d="M12 3l6 15-6-4-6 4z" fill="currentColor"/></svg>` : "";
+  const z = d && d.zon;
+  const toestand = w ? ((x) => (x.startsWith("weer.") ? w.toestand : x))(t("weer." + w.toestand)) : "";
+  el.innerHTML = weerAchtergrond(soort) + `<div class="weer-inhoud">
+      <div class="weer-kop"><span class="weer-adres">${esc((d && d.adres) || t("weer.buiten"))}</span>
+        <span class="hero">${graden(w ? w.temp : d ? d.buiten : null)}</span><span class="weer-toestand">${esc(toestand)}</span></div>
+      <div class="weer-tegels">
+        ${tegel(op, t("weer.zon_op"), z ? tijdVan(z.op) : "–", z ? dagVan(z.op) : "")}
+        ${tegel(onder, t("weer.zon_onder"), z ? tijdVan(z.onder) : "–", z ? dagVan(z.onder) : "")}
+        ${tegel(druppel, t("weer.vocht"), procent(w && w.vocht), esc(t("weer.lucht")))}
+        ${tegel(windI, t("weer.wind"), w && w.wind_bft != null ? w.wind_bft + " Bft" : "–", w ? `${pijl}${esc(w.wind_richting || "")}` : "")}
+      </div></div>`;
+  el.classList.toggle("nacht", soort === "nacht" || soort === "onweer");
+  const c = LUCHT[soort] || LUCHT.bewolkt;
+  el.style.background = `linear-gradient(180deg, ${c[0]}, ${c[1]} 62%, ${c[2]})`;
+}
+
+/** Kleur bij een temperatuur: 10° blauw → 25° rood (zelfde stappen als het ontwerp). */
+const TEMP_STOPS = [[10, [47, 111, 214]], [13.5, [141, 184, 238]], [17, [243, 231, 218]], [21, [242, 163, 107]], [25, [217, 68, 63]]];
 function tempKleur(v) {
   if (v == null) return null;
-  const x = Math.min(Math.max(v, 10), 30);
+  const x = Math.min(Math.max(v, 10), 25);
   for (let i = 1; i < TEMP_STOPS.length; i++) {
     const [t1, c1] = TEMP_STOPS[i];
     if (x <= t1) {
@@ -143,9 +184,6 @@ function tempStijl(v) {
   return `--k:rgba(${c},.62);--kr:rgba(${c},.9);--kt:${licht ? "#2a1a10" : "#fff"}`;
 }
 
-function kopRij(titel, naar) {
-  return `<div class="row"><h2>${esc(titel)}</h2>${naar ? `<button type="button" class="ga-naar" data-ga="${naar}">${esc(t("tab." + naar))} ›</button>` : ""}</div>`;
-}
 
 function haFout(id) {
   const el = $(id);
@@ -196,126 +234,6 @@ function kamerStatus(r) {
   if (!r.bereikbaar) return t("th.onbereikbaar");
   if (r.modus === "off") return t("kl.uit");
   return r.actie === "heating" ? t("kl.verwarmt") : t("kl.op_temp");
-}
-
-/* ---------- Thuis ---------- */
-
-function slimmeTips(d) {
-  const tips = [];
-  const v = nuData && nuData.vermogen;
-  const woon = d && d.klimaat.find((r) => (r.ruimte || r.naam).toLowerCase() === "woonkamer");
-  const zw = d && d.zonwering;
-  // 1. Veel zon en het wordt warm binnen: zonwering omlaag
-  if (v && zw && v.zon >= 1000 && woon && woon.temp != null && woon.temp >= 21.5) {
-    const s = zw.scenes.find((x) => x.naam.toLowerCase() === "overdag 1");
-    if (s && zw.actief !== s.naam) tips.push({ icoon: "zon", kop: t("tip.zon_kop"), tekst: t("tip.zon_tekst", { w: watt(v.zon), temp: graden(woon.temp) }), knop: s.naam, a: "zscene", id: s.id });
-  }
-  // 2. Goedkoopste twee uur van vandaag (nog te gaan)
-  if (prijsVandaag && prijsVandaag.uren && prijsVandaag.uren.length) {
-    const b = besteBlok(prijsVandaag.uren, 2, new Date().getHours(), 24);
-    if (b) {
-      const u = parseInt(prijsVandaag.uren[b.i].uur, 10);
-      const nu = new Date().getHours();
-      tips.push({ icoon: "euro", kop: u <= nu ? t("tip.goedkoop_nu_kop") : t("tip.goedkoop_kop", { tijd: `${uurTekst(u)} – ${uurTekst(u + 2)}` }), tekst: t("tip.goedkoop_tekst", { prijs: euro(b.gem) }), knop: t("tab.prijzen"), ga: "prijzen" });
-    }
-  }
-  // 3. Batterij-advies voor vannacht nog niet ingesteld
-  const p = advies && advies.plan;
-  if (p && p.status === "ok" && !p.ingesteld && !p.gelijk_aan_schema) {
-    tips.push({ icoon: "bat", kop: t("tip.advies_kop"), tekst: adviesKop(p), knop: t("adv.titel"), ga: "advies" });
-  }
-  // 4. Stroom is nu duur en de batterij is leeg
-  if (nuData && nuData.prijs && nuData.prijs.level === "duur" && v && v.laadtoestand != null && v.laadtoestand < 15) {
-    tips.push({ icoon: "euro", kop: t("tip.duur_kop"), tekst: nuData.volgende ? t("tip.duur_tekst", { tijd: nuData.volgende.uur }) : "", ga: "overzicht", knop: t("et.overzicht") });
-  }
-  return tips;
-}
-
-const TIP_ICOON = {
-  zon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>',
-  euro: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M17 6a7 7 0 1 0 0 12M4 10h9M4 14h9"/></svg>',
-  bat: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="16" height="10" rx="2"/><path d="M22 11v2M7 10v4M11 10v4"/></svg>',
-};
-
-function tekenThuis() {
-  const nu = new Date();
-  const datum = nu.toLocaleDateString(locale(), { weekday: "long", day: "numeric", month: "long" });
-  const d = thuisData && thuisData.ok ? thuisData : null;
-  const w = d && d.weer;
-  $("th-datum").innerHTML = esc(datum.charAt(0).toUpperCase() + datum.slice(1))
-    + (w ? ` · <span class="weer-mini">${weerIcoon(w.icoon, 18)}${graden(w.temp)}</span>` : d && d.buiten != null ? ` · ${graden(d.buiten)}` : "");
-
-  // Tegels: woonkamer, kosten tot nu, batterij
-  const woon = d && d.klimaat.find((r) => (r.ruimte || r.naam).toLowerCase() === "woonkamer");
-  $("th-woon").textContent = graden(woon ? woon.temp : null);
-  $("th-woon-sub").textContent = woon ? (woon.actie === "heating" ? "▲ " + graden(wachtTemp[woon.id] ?? woon.doel) : t("th.doel", { temp: graden(wachtTemp[woon.id] ?? woon.doel) })) : "";
-  $("th-kosten").textContent = nuData ? euro(nuData.vandaag.kosten, 2) : "–";
-  const v = nuData && nuData.vermogen;
-  $("th-soc").textContent = v && v.laadtoestand != null ? Math.round(v.laadtoestand) + "%" : "–";
-  $("th-bat").textContent = !v ? "" : Math.abs(v.batterij) < 15 ? t("bat.rust") : t(v.batterij > 0 ? "bat.ontlaadt" : "bat.laadt", { w: watt(v.batterij) });
-
-  const fout = haFout("th-fout");
-
-  // Nu slim om te doen
-  const tk = $("th-tips");
-  const tips = slimmeTips(d);
-  tk.hidden = !tips.length;
-  tk.innerHTML = `<h2>${esc(t("th.tips"))}</h2>` + tips.map((x) => `<div class="tip">
-      <span class="tip-icoon ${x.icoon}">${TIP_ICOON[x.icoon]}</span>
-      <div class="stack groei"><b>${esc(x.kop)}</b><span class="note">${esc(x.tekst)}</span></div>
-      ${x.knop ? `<button type="button" class="knop klein" ${x.ga ? `data-ga="${x.ga}"` : `data-a="${x.a}" data-id="${esc(x.id)}"`}>${esc(x.knop)}</button>` : ""}
-    </div>`).join("");
-
-  // Licht: groepen als snelle knoppen
-  const lk = $("th-licht");
-  const li = d && d.licht;
-  lk.hidden = !li || !(li.groepen.length || li.totaal);
-  if (!lk.hidden) {
-    const gr = li.groepen.filter((g) => !g.ouder);
-    lk.innerHTML = kopRij(t("tab.licht"), "licht") + (gr.length
-      ? `<div class="mini-groepen">${gr.map((g) => {
-          const s = groepStand(g);
-          return `<button type="button" class="mini-groep${s.aan ? " aan" : ""}" data-a="groep" data-id="${esc(g.id)}" aria-pressed="${s.aan}" ${g.bereikbaar ? "" : "disabled"}>
-            <span class="lamp-icoon">${LAMP}</span><span class="stack"><b>${esc(g.naam)}</b><small>${s.aan ? (s.helderheid != null ? s.helderheid + "%" : esc(t("li.aan_kort"))) : esc(t("li.uit_kort"))}</small></span></button>`;
-        }).join("")}</div>`
-      : `<div class="row end"><b class="groot">${esc(t("li.van", { aan: li.aan, totaal: li.totaal }))}</b></div>`)
-      + `<button type="button" class="knop breed-knop" data-a="alles_uit" ${li.aan ? "" : "disabled"}>${esc(t("li.alles_uit"))}</button>`;
-  }
-
-  // Zonwering: scènes als chips
-  const zk = $("th-zon");
-  const zw = d && d.zonwering;
-  zk.hidden = !zw || (!zw.gordijnen.length && !zw.scenes.length);
-  if (!zk.hidden) {
-    zk.innerHTML = kopRij(t("tab.zonwering"), "zonwering")
-      + (zw.actief ? `<div class="regel"><span>${esc(t("zw.scene"))}</span><b class="c-oranje">${esc(zw.actief)}</b></div>` : "")
-      + `<div class="chips">${zw.scenes.map((s) => `<button type="button" class="chip-knop${s.naam === zw.actief ? " vol" : ""}" data-a="zscene" data-id="${esc(s.id)}">${esc(s.naam)}</button>`).join("")}</div>`;
-  }
-
-  // Ruimtes per verdieping, gekleurd naar temperatuur
-  const rk = $("th-ruimtes");
-  const kl = d ? d.klimaat : [];
-  rk.hidden = !kl.length;
-  if (kl.length) {
-    rk.innerHTML = kopRij(t("th.ruimtes"), "klimaat") + perVerdieping(kl).map((v) =>
-      `<span class="sublabel">${esc(v.naam)}</span><div class="kamers-mini">${v.kamers.map((r) => {
-        const doel = wachtTemp[r.id] ?? r.doel;
-        return `<button type="button" class="kamer-mini${r.actie === "heating" ? " warm" : ""}${r.bereikbaar ? "" : " weg"}" data-ga="klimaat" style="${tempStijl(r.temp)}">
-          <span class="naam">${esc(r.naam)}</span><b>${graden(r.temp)}</b><small>${r.actie === "heating" ? "▲ " + graden(doel) : esc(t("th.doel", { temp: graden(doel) }))}</small></button>`;
-      }).join("")}</div>`).join("");
-  }
-
-  // Energie nu
-  const ek = $("th-energie");
-  ek.innerHTML = kopRij(t("th.energie_nu"), "energie") + (v ? `<div class="grid2 energie-mini">
-      <div class="stat"><span>${esc(t("node.zon"))}</span><b class="c-zon">${watt(v.zon)}</b></div>
-      <div class="stat"><span>${esc(t("node.huis"))}</span><b>${watt(v.huis)}</b></div>
-      <div class="stat"><span>${esc(t("node.batterij"))}</span><b class="c-bat">${watt(v.batterij)}</b></div>
-      <div class="stat"><span>${esc(t("node.net"))}</span><b class="c-net">${watt(v.net)}</b></div>
-    </div>
-    ${nuData.prijs ? `<div class="regel boven-lijn"><span>${esc(t("ov.tarief"))}</span><span><b>${euro(nuData.prijs.allin)}</b> <span class="chip klein">${esc(niveau(nuData.prijs.level))}</span></span></div>` : ""}`
-    : `<p class="note">${esc(t("th.geen_energie"))}</p>`);
-  if (fout && !d) rk.hidden = lk.hidden = zk.hidden = true;
 }
 
 /* ---------- Klimaat ---------- */
@@ -446,8 +364,8 @@ function tekenZonwering() {
       + zw.scenes.map((s) => {
         const actief = s.naam === zw.actief;
         return `<button type="button" class="scene-knop${actief ? " vol" : ""}${s.naam.length > 16 ? " lang" : ""}" data-a="zscene" data-id="${esc(s.id)}" aria-pressed="${actief}">
-          <span>${esc(s.naam)}</span>${s.bezig ? `<span class="bezig" aria-label="${esc(t("zw.bezig"))}"></span>` : actief ? VINK : ""}</button>`;
-      }).join("") + `</div>${zw.helper ? "" : `<p class="note">${esc(t("zw.geen_helper"))}</p>`}</section>`;
+          <span>${esc(s.naam)}</span>${s.bezig ? `<span class="bezig" aria-label="${esc(t("zw.bezig"))}"></span>` : ""}</button>`;
+      }).join("") + `</div>${zw.kan_herkennen ? `<p class="note info">${INFO}${esc(t(zw.actief ? (zw.herkend ? "zw.herkend" : "zw.bezig_naar") : "zw.eigen_stand", { naam: zw.actief || "" }))}</p>` : zw.helper ? "" : `<p class="note">${esc(t("zw.geen_helper"))}</p>`}</section>`;
   }
   if (!zw.gordijnen.length) html += `<p class="card leeg">${esc(t("zw.geen"))}</p>`;
   html += zw.gordijnen.map((g) => {
@@ -514,7 +432,7 @@ function klik(e) {
     actie({ soort: "zonwering_scene", id: k.dataset.id });
   }
 }
-for (const id of ["th-tips", "th-zon", "th-ruimtes", "th-licht", "th-energie", "kl-main", "li-main", "zw-main", "li-uit", "li-sheet-scenes"]) $(id).addEventListener("click", klik);
+for (const id of ["kl-main", "li-main", "zw-main", "li-uit", "li-sheet-scenes"]) $(id).addEventListener("click", klik);
 $("li-uit").dataset.a = "alles_uit";
 $("li-sheet-sluit").addEventListener("click", sluitSheet);
 $("li-sheet-achter").addEventListener("click", sluitSheet);
@@ -544,6 +462,6 @@ liMain.addEventListener("input", (e) => {
 
 /* ---------- Opstarten ---------- */
 
-toon(TABS.includes(start) ? start : "thuis");
+toon(TABS.includes(start) ? start : "overzicht");
 // Stip bij Energie als er iets aandacht nodig heeft, ook als je op een ander scherm bent
 if (start !== "systeem") verversStatus();
